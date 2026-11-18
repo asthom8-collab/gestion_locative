@@ -18,6 +18,7 @@ services:
       retries: 5
 
   api:
+    image: ghcr.io/asthom8-collab/gestion-locative-api:${IMAGE_TAG:-latest}
     build:
       context: ./apps/api
       dockerfile: Dockerfile
@@ -36,6 +37,7 @@ services:
       - app_storage:/app/storage
 
   web:
+    image: ghcr.io/asthom8-collab/gestion-locative-web:${IMAGE_TAG:-latest}
     build:
       context: ./apps/web
       dockerfile: Dockerfile
