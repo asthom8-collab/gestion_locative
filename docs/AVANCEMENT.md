@@ -11,6 +11,12 @@
 - **Industrialisation** : dépôt git, CI GitHub Actions (compilation, tests et images Docker publiées sur GHCR), `.dockerignore`, CLAUDE.md et ce fichier.
 - **Tests automatisés** : 24 tests d'intégration API (Vitest + Supertest sur base `_test`) et 13 tests front (Vitest + Testing Library). `npm run verify` à la racine = build + tests des deux apps.
 
+### Tester à distance (Thomas travaille souvent en SSH)
+- La machine est dans le réseau Tailscale de Thomas (adresse : `tailscale ip -4`, notée ici `<IP_TAILSCALE>`). On lance l'API de dev sur un autre port que le conteneur, et Vite en l'écoutant **uniquement sur l'adresse Tailscale** :
+  `PORT=3002 npm run dev` (dans `apps/api`) et `API_URL=http://localhost:3002 npx vite --port 5176 --strictPort --host <IP_TAILSCALE>` (dans `apps/web`).
+  On ouvre ensuite http://<IP_TAILSCALE>:5176 depuis le PC ou l'iPhone. Sans Tailscale : `ssh -L 5176:<IP_TAILSCALE>:5176 <utilisateur>@<machine>`.
+- `API_URL` (dans `vite.config.ts`) choisit la cible du proxy `/api` (par défaut `http://localhost:3001`).
+
 ### Pas encore fait / points d'attention
 - **Pas d'authentification** : le modèle `User` existe, mais aucune route de login ni protection de l'API. À faire avant toute exposition sur Internet.
 - Les locataires et les baux ne sont pas filtrés par propriétaire (seuls les biens le sont via `Ownership`) : à traiter avec l'auth.
@@ -30,7 +36,7 @@
 
 > La numérotation des phases et des US vient des commentaires du schéma. À confirmer ou compléter avec Thomas (l'historique de la conversation précédente n'est pas disponible).
 
-## Phase 2 (loyers et quittances) : développée, en attente de test manuel de l'interface
+## Phase 2 (loyers et quittances) : livrée sur `main` (2026-11-20)
 
 Décisions (validées par Thomas le 2026-11-20) :
 - Adresse du bailleur : champs `address/zipCode/city` sur `User`, modifiables via `/api/me` et la page Paramètres.
@@ -48,10 +54,16 @@ Fait :
 - Vérifié à la main : parcours complet en curl sur l'API de dev, puis avec la nouvelle image Docker de l'API (PDF généré, texte contrôlé : accents, €, une page).
 
 Reste à faire :
-- [ ] Tester l'interface dans un navigateur (pas de navigateur disponible pour Claude dans cette session), puis pousser sur `main`. Le commit `cfa9855` est déjà sauvegardé sur la branche distante `phase-2-loyers` (`main` distant est encore à `0568979`).
+- [x] Interface testée par Thomas à distance (via Tailscale) : « ça fonctionne plutôt bien », mais pas encore tout vérifié. Poussée sur `main`.
 - [ ] Plus tard : envoi de la quittance par e-mail (`Receipt.sentAt`, il faut un SMTP), reçu pour un paiement partiel, échéances sur le Tableau de bord.
 
 ## Journal
+
+### 2026-11-20 (soir)
+- Test de la phase 2 par Thomas à distance, via Tailscale (voir « Tester à distance »). Les conteneurs sur 5175/3001 sont encore ceux d'avant la phase 2 (blocage AppArmor).
+- Phase 2 poussée sur `main`.
+- Maquette du front faite par Thomas, sur le disque de la Freebox (partage SMB de la box ; chemin et accès notés hors du dépôt, dans la mémoire locale de Claude ; fichier principal `GestionLocative.jsx`). On la lit avec un conteneur jetable (`alpine` + `samba-client`), puisque `sudo` n'est pas disponible depuis Claude. Elle sert de référence pour le visuel et pour les écrans des phases suivantes (Interventions, Impôts, Documents, États des lieux…).
+- Ensuite : reprendre l'habillage de la maquette (menu en groupes, `lucide-react`, composants) sur la branche `refonte-front`.
 
 ### 2026-11-20
 - Reprise après une pause. La pile Docker locale était arrêtée depuis 3 mois (`web` redémarrait en boucle faute d'`api`) : relancée et reconstruite.

@@ -7,7 +7,8 @@ export default defineConfig({
   server: {
     port: 5175,
     proxy: {
-      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+      // API_URL permet de viser une autre API (ex. une API de dev sur un autre port)
+      '/api': { target: process.env.API_URL ?? 'http://localhost:3001', changeOrigin: true },
     },
   },
   test: {
