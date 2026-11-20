@@ -80,6 +80,7 @@ colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locata
 ## Journal
 
 ### 2026-11-20 (nuit)
+- **Historique de `main` réécrit** (accord de Thomas, dépôt public) : le journal poussé plus tôt contenait des détails du réseau local. Les commits `5424658` et `44e1a9c` sont fusionnés en `60f7cf3` (mêmes fichiers finaux), puis `main` a été forcée sur GitHub. La branche `refonte-front` a été reconstruite par-dessus. Des sauvegardes locales des anciennes branches existent (`sauvegarde/*`), à ne pas pousser. Règle : **aucun détail du réseau, de la famille ou des locataires dans le dépôt** (le dépôt est public).
 - Refonte, étape 4 : Biens, Locataires, Locations et fiche du bail.
 - Bugs trouvés et corrigés en route :
   - **erreurs de l'API perdues** sur Biens, Locataires et Baux : un refus (ex. 409 « bien avec historique de baux », 400 « e-mail invalide ») ne s'affichait pas et la fenêtre se fermait comme si tout allait bien. Ajout de `useActionError` et `ErrorAlert`, testés écran par écran ;
