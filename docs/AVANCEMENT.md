@@ -3,6 +3,59 @@
 > Journal de bord : il sert de mémoire entre les sessions. On le met à jour à chaque étape stabilisée, l'entrée la plus récente en haut du journal.
 > La description technique (composants, API, **modèle de données**, règles métier, tests) est dans [ARCHITECTURE.md](ARCHITECTURE.md).
 
+## ▶ Reprise (à lire en premier) — état au 2026-11-21, fin de session
+
+### Où en est le code
+| Branche | Commit | Contenu | Poussée ? |
+|---|---|---|---|
+| `main` | `60f7cf3` | Phase 2 (loyers, quittances PDF, Paramètres). Historique réécrit (voir le journal du 20/11 nuit) | oui, c'est `origin/main` |
+| `refonte-front` | `62a54b8` | Refonte du front d'après la maquette : menu, tableau de bord, Biens, Locataires, Locations, fiche du bail | **non, locale** |
+| `multi-proprietaires` | `cc3a1b6` | Part de `refonte-front` et ajoute : connexion, données par propriétaire, copropriété, signatures | **non, locale** (branche courante) |
+| `sauvegarde/*` | — | Anciennes branches d'avant la réécriture, avec des détails privés | **ne jamais pousser** ; à supprimer quand Thomas est d'accord |
+
+`multi-proprietaires` contient tout (refonte + multipropriétaires) : c'est elle qu'il faut tester puis fusionner dans `main`.
+`npm run verify` passe sur `multi-proprietaires` : 70 tests API, 48 tests front.
+
+### Ce que Thomas doit tester (rien n'a encore été validé à la main, sauf le tableau de bord)
+1. **Connexion** : `admin@local.dev` / `changeme` (compte du seed). Vérifier l'erreur sur un mauvais mot de passe, puis la déconnexion (icône en bas de la barre latérale, ou menu « Plus » sur mobile).
+2. **Paramètres** : ajouter une image de signature (PNG ou JPEG, 300 Ko au plus) ; changer de mot de passe ; section **Comptes** (administrateur) : créer un compte pour un copropriétaire, noter le mot de passe provisoire affiché.
+3. **Copropriété** : sur la carte d'un bien, bouton « Propriétaires » (icône personnes) : ajouter le nouveau compte, régler les quotes-parts (total 100 %, bouton « Parts égales »).
+4. **Second compte** (navigateur privé) : se connecter avec le compte créé ; changement obligatoire du mot de passe provisoire ; il ne doit voir **que** le bien partagé (avec son bail, son locataire, ses loyers).
+5. **Quittance en copropriété** : les deux propriétaires renseignent leur adresse (Paramètres) et leur signature, puis Loyers → encaisser → établir la quittance : les deux noms et les deux signatures doivent apparaître.
+6. **Refonte** (pas encore testée par Thomas) : Biens (historique dépliable avec les périodes de vacance), Locataires (onglets En cours / Anciens et sans bail), Locations, fiche du bail (modifier le loyer, résilier avec une date ; une date avant le début du bail doit être refusée).
+
+### Comment relancer l'environnement de test à distance
+Les serveurs lancés par Claude s'arrêtent avec la session. Pour les relancer (Thomas en SSH, accès par Tailscale) :
+```bash
+docker compose up -d db                                   # base de dev (port 5433)
+cd apps/api && PORT=3002 npm run dev                      # API de dev (code de la branche courante)
+cd apps/web && API_URL=http://localhost:3002 npx vite --port 5176 --strictPort --host <IP_TAILSCALE>
+```
+Puis ouvrir `http://<IP_TAILSCALE>:5176` (adresse : `tailscale ip -4`). La base de dev a déjà la migration
+`20261121090000_multi_proprietaires` ; sur une autre base : `npx prisma migrate deploy` dans `apps/api`.
+Les conteneurs (port 5175) sont encore en version d'avant la phase 2 (blocage AppArmor, il faut `sudo snap restart docker`) ;
+ils auront besoin de `SESSION_SECRET` dans le `.env` de la racine (déjà ajouté sur cette machine).
+
+### Prochaines étapes, dans l'ordre
+1. Retours de Thomas sur les tests ci-dessus, corrections.
+2. Fusionner `multi-proprietaires` dans `main` (fast-forward : elle part de `main`), pousser ; la CI publie les images.
+3. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, puis `docker compose up -d --build`), avec `SESSION_SECRET`.
+4. Supprimer les branches `sauvegarde/*` (accord de Thomas).
+5. Suite de la feuille de route : phase 3 (rapprochement bancaire) ou phase 4 (charges, IRL), en gardant en tête la
+   répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1). Écrans de la maquette pas encore faits :
+   Paiements, Synchro bancaire, Impôts, Interventions, Documents, États des lieux, dossier locataire.
+
+### Décisions en attente (à poser à Thomas le moment venu)
+- Impôts : quote-part figée par année fiscale (historique) ou appliquée telle quelle à l'export ? (phase 5)
+- Régime fiscal par copropriétaire (sur `Ownership`) si deux copropriétaires ont des régimes différents ?
+- Interventions, colocation, dépôt de garantie, autres types de bien et régimes de la maquette : nouveaux modèles à créer (ARCHITECTURE.md § 4.3).
+- Purge des anciens commits sur GitHub (`5424658`, `44e1a9c`, encore accessibles par leur identifiant) : demande au support GitHub si Thomas le souhaite.
+
+### Règles à garder en tête
+- Dépôt **public** : aucun détail du réseau, de la famille ou des locataires dans le dépôt (placeholders `<IP_TAILSCALE>`).
+- `sudo` impossible depuis Claude : pour un outil manquant, passer par un conteneur Docker jetable.
+- La maquette de Thomas est sur le partage de la box : chemin dans la mémoire locale de Claude, pas ici.
+
 ## État actuel (2026-11-21)
 
 ### Fait
