@@ -1,7 +1,7 @@
 name: CI
 
-# - Pull request / push sur une autre branche : compilation + build des images (sans publication)
-# - Push sur main ou tag v* : compilation + build + publication des images sur GHCR
+# - Pull request / push sur une autre branche : compilation + tests + build des images (sans publication)
+# - Push sur main ou tag v* : compilation + tests + build + publication des images sur GHCR
 
 on:
   push:
@@ -20,8 +20,25 @@ env:
 
 jobs:
   build:
-    name: Compilation ${{ matrix.app }}
+    name: Compilation et tests ${{ matrix.app }}
     runs-on: ubuntu-latest
+    # Base PostgreSQL éphémère pour les tests d'intégration de l'API
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: gestion_locative_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d gestion_locative_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql://ci:ci@localhost:5432/gestion_locative_test
     strategy:
       fail-fast: false
       matrix:
@@ -45,6 +62,9 @@ jobs:
         run: npx prisma generate
 
       - run: npm run build
+
+      - name: Tests
+        run: npm test
 
   docker:
     name: Image Docker ${{ matrix.app }}

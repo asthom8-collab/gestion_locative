@@ -26,6 +26,8 @@ export const tenantsService = {
     const hasActiveLeases = tenant.leases.some((l) => l.active)
     if (hasActiveLeases)
       throw new AppError(409, 'Impossible de supprimer un locataire avec un bail actif')
+    if (tenant.leases.length > 0)
+      throw new AppError(409, 'Impossible de supprimer un locataire qui a un historique de baux')
     return tenantsRepository.delete(id)
   },
 }

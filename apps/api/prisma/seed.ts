@@ -1,5 +1,6 @@
 import { PrismaClient, Role, PropertyType, FiscalRegime, LeaseType } from '@prisma/client'
 import { hash } from 'bcrypt'
+import { DEV_USER_ID } from '../src/lib/devUser'
 
 const prisma = new PrismaClient()
 
@@ -8,6 +9,7 @@ async function main() {
     where: { email: 'admin@local.dev' },
     update: {},
     create: {
+      id: DEV_USER_ID,
       email: 'admin@local.dev',
       passwordHash: await hash('changeme', 12),
       firstName: 'Thomas',

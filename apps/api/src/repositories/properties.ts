@@ -64,6 +64,10 @@ export const propertiesRepository = {
   },
 
   delete(id: string) {
-    return prisma.property.delete({ where: { id } })
+    // Les quotes-parts (Ownership) n'ont pas de suppression en cascade : on les retire d'abord
+    return prisma.$transaction([
+      prisma.ownership.deleteMany({ where: { propertyId: id } }),
+      prisma.property.delete({ where: { id } }),
+    ])
   },
 }

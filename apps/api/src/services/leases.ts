@@ -18,6 +18,12 @@ export const leasesService = {
   },
 
   async create(data: CreateLeaseInput) {
+    const [property, tenant] = await Promise.all([
+      prisma.property.findUnique({ where: { id: data.propertyId }, select: { id: true } }),
+      prisma.tenant.findUnique({ where: { id: data.tenantId }, select: { id: true } }),
+    ])
+    if (!property) throw new AppError(404, 'Bien introuvable')
+    if (!tenant) throw new AppError(404, 'Locataire introuvable')
     const existing = await prisma.lease.findFirst({
       where: { propertyId: data.propertyId, active: true },
     })

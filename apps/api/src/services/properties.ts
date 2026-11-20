@@ -26,6 +26,8 @@ export const propertiesService = {
     const hasActiveLeases = property.leases.some((l) => l.active)
     if (hasActiveLeases)
       throw new AppError(409, 'Impossible de supprimer un bien avec un bail actif')
-    return propertiesRepository.delete(id)
+    if (property.leases.length > 0)
+      throw new AppError(409, 'Impossible de supprimer un bien qui a un historique de baux')
+    await propertiesRepository.delete(id)
   },
 }

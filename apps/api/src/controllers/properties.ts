@@ -1,8 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { propertiesService } from '../services/properties'
-
-// userId hardcodé en attendant la brique auth — remplacé par req.user.id en Phase auth
-const DEV_USER_ID = 'cmqfofmui00009mbwcrd9flm8'
+import { DEV_USER_ID } from '../lib/devUser'
 
 export const propertiesController = {
   async getAll(_req: Request, res: Response, next: NextFunction) {

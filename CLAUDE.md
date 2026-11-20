@@ -8,9 +8,9 @@ Dépôt : https://github.com/asthom8-collab/gestion_locative (branche `main`).
 ## Mode de fonctionnement (convenu le 2026-11-18)
 
 1. **Boucle courte en local** : on développe et on teste sur la machine (`npm run dev`), avec de petites itérations.
-2. **Push uniquement quand une version est stable** : compile (`npm run build` dans `apps/api` et `apps/web`), testée à la main, sans secret. Commit en français, clair.
+2. **Push uniquement quand une version est stable** : `npm run verify` à la racine passe (compilation + tests des deux apps), testée à la main, sans secret. Commit en français, clair.
 3. **Capitaliser** : à chaque étape notable, mettre à jour `docs/AVANCEMENT.md` (ce qui a été fait, les décisions, la suite). C'est la mémoire du projet entre les sessions.
-4. **CI GitHub Actions** (`.github/workflows/ci.yml`) : elle compile les deux apps et construit les images Docker. Sur `main` ou un tag `v*`, elle publie sur GHCR :
+4. **CI GitHub Actions** (`.github/workflows/ci.yml`) : elle compile et teste les deux apps (avec une base PostgreSQL éphémère pour l'API), puis construit les images Docker. Sur `main` ou un tag `v*`, elle publie sur GHCR :
    - `ghcr.io/asthom8-collab/gestion-locative-api:{latest,sha-xxxxxxx,X.Y.Z}`
    - `ghcr.io/asthom8-collab/gestion-locative-web:{latest,sha-xxxxxxx,X.Y.Z}`
 
@@ -40,11 +40,24 @@ npm run build               # tsc + vite build, vérification avant push
 
 # Pile complète en conteneurs
 docker compose up -d --build
+
+# Vérification avant push (à la racine) : build + tests des deux apps
+npm run verify
 ```
+
+## Tests
+
+- `apps/api` : Vitest + Supertest, tests d'intégration HTTP dans `tests/` sur une vraie base PostgreSQL.
+  La base de test est `<base de DATABASE_URL>_test` (créée et migrée automatiquement, **vidée à chaque test**) ;
+  `TEST_DATABASE_URL` permet de la forcer (CI). Le nom doit finir par `_test`. Il faut `docker compose up -d db`.
+- `apps/web` : Vitest + Testing Library (jsdom), tests `*.test.tsx` à côté du code ; `fetch` est simulé via `src/test/utils.tsx`.
+- `npm test` dans chaque app, `npm run test:watch` en développement.
+- Le serveur Express est défini dans `src/app.ts` (importé par les tests), `src/index.ts` ne fait que l'écoute.
 
 ## Conventions
 
 - Code, commits et docs en français, identifiants de code en anglais.
 - Toute modification du schéma passe par une migration Prisma (`prisma migrate dev --name ...`), jamais par une modification à la main de la base.
 - Ne jamais committer `.env`, `storage/` (documents et PDF des locataires) ni de données personnelles réelles.
-- `deploy-back.sh` / `deploy-front.sh` sont des scripts historiques qui **réécrivent** les sources (`cat > fichier`). Ne pas les exécuter : ils écraseraient le code actuel.
+- En attendant l'auth, l'utilisateur courant est `DEV_USER_ID` (`apps/api/src/lib/devUser.ts`), créé par le seed et par les tests.
+- Le port 5175 sert au Vite de dev **et** au conteneur `web` : on lance l'un ou l'autre.
