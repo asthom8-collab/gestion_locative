@@ -4,5 +4,5 @@ export {
   LayoutDashboard, Building2, Users, FileSignature, Receipt, Plus, Pencil, Trash2, X, Check,
   ChevronRight, ChevronLeft, MapPin, Euro, CircleCheck, CircleDashed, MoreHorizontal, UserCircle2,
   CalendarCheck, AlertCircle, Home, Car, Warehouse, Download, Settings, ClipboardList, Mail, Phone,
-  ArrowLeft, Clock, Ban,
+  ArrowLeft, Clock, Ban, LogOut, Users2, PenLine, KeyRound, Upload,
 } from 'lucide-react'

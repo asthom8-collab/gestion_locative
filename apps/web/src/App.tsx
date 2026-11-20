@@ -1,5 +1,8 @@
+import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryCache, MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { isUnauthorized } from './api/client'
+import { AuthGate } from './components/auth/AuthGate'
 import { Sidebar } from './components/layout/Sidebar'
 import { BottomNav } from './components/layout/BottomNav'
 import { MobileHeader } from './components/layout/MobileHeader'
@@ -11,11 +14,25 @@ import { LeaseDetail } from './pages/LeaseDetail'
 import { Rents } from './pages/Rents'
 import { Settings } from './pages/Settings'
 
-const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } })
+export function createQueryClient() {
+  // Session expirée pendant l'utilisation : on recharge le profil, ce qui ramène à l'écran de connexion.
+  // Pas pour la requête du profil elle-même (sa 401 relancerait le profil, en boucle).
+  const onError = (error: unknown) => {
+    if (isUnauthorized(error)) qc.invalidateQueries({ queryKey: ['me'] })
+  }
+  const qc: QueryClient = new QueryClient({
+    defaultOptions: { queries: { retry: (count, error) => !isUnauthorized(error) && count < 1, staleTime: 30_000 } },
+    queryCache: new QueryCache({ onError: (error, query) => { if (query.queryKey[0] !== 'me') onError(error) } }),
+    mutationCache: new MutationCache({ onError }),
+  })
+  return qc
+}
 
 export default function App() {
+  const [qc] = useState(createQueryClient)
   return (
     <QueryClientProvider client={qc}>
+      <AuthGate>
       <BrowserRouter>
         <div className="min-h-screen bg-slate-50 text-slate-900" style={{ fontFamily: "'Segoe UI',system-ui,-apple-system,sans-serif" }}>
           <Sidebar />
@@ -36,6 +53,7 @@ export default function App() {
           <BottomNav />
         </div>
       </BrowserRouter>
+      </AuthGate>
     </QueryClientProvider>
   )
 }

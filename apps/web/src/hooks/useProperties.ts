@@ -33,3 +33,11 @@ export function useDeleteProperty() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['properties'] }),
   })
 }
+
+export function useSetOwners() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, owners }: { id: string; owners: { userId: string; share: number }[] }) => api.properties.setOwners(id, owners),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['properties'] }),
+  })
+}

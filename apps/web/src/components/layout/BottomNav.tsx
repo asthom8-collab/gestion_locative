@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
-import { CircleCheck, MoreHorizontal } from '../icons'
+import { CircleCheck, MoreHorizontal, LogOut } from '../icons'
+import { useLogout } from '../../hooks/useMe'
 import { PRIMARY_NAV, SECONDARY_NAV } from './nav'
 
 /** Barre du bas sur mobile, avec un menu « Plus » qui s'ouvre par le bas (comme dans la maquette). */
 export function BottomNav() {
   const [showMore, setShowMore] = useState(false)
+  const logoutM = useLogout()
   const { pathname } = useLocation()
   useEffect(() => setShowMore(false), [pathname])
   const inSecondary = SECONDARY_NAV.some(n => pathname.startsWith(n.to))
@@ -35,6 +37,11 @@ export function BottomNav() {
                 )}
               </NavLink>
             ))}
+            <button type="button" onClick={() => logoutM.mutate()}
+              className="w-full flex items-center gap-3 px-3 py-3.5 rounded-xl text-left text-slate-700 hover:bg-slate-50">
+              <span className="p-2 rounded-lg bg-slate-100 text-slate-500"><LogOut size={20} /></span>
+              <span className="font-medium text-sm">Se déconnecter</span>
+            </button>
           </div>
         </div>
       )}

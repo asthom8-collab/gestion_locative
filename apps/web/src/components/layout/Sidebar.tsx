@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { Building2, UserCircle2 } from '../icons'
-import { useMe } from '../../hooks/useMe'
+import { Building2, UserCircle2, LogOut } from '../icons'
+import { useMe, useLogout } from '../../hooks/useMe'
 import { NAV_GROUPS, initials } from './nav'
 
 export function Sidebar() {
   const { data: me } = useMe()
+  const logoutM = useLogout()
   const name = me ? `${me.firstName} ${me.lastName}`.trim() : ''
   return (
     <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64 bg-slate-900 text-slate-300 z-40">
@@ -38,8 +39,9 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
+      <div className="m-3 shrink-0 border-t border-slate-800 pt-3 flex items-center gap-1">
       <NavLink to="/settings"
-        className="m-3 shrink-0 flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 border-t border-slate-800 pt-3">
+        className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800">
         <div className="grid place-items-center w-9 h-9 rounded-full bg-slate-700 text-white text-xs font-semibold shrink-0">
           {initials(me?.firstName, me?.lastName) || <UserCircle2 size={15} />}
         </div>
@@ -48,6 +50,11 @@ export function Sidebar() {
           <div className="text-[11px] text-slate-500">Paramètres</div>
         </div>
       </NavLink>
+      <button onClick={() => logoutM.mutate()} aria-label="Se déconnecter" title="Se déconnecter"
+        className="shrink-0 p-2.5 rounded-lg text-slate-500 hover:bg-slate-800 hover:text-white">
+        <LogOut size={16} />
+      </button>
+      </div>
     </aside>
   )
 }

@@ -3,16 +3,17 @@
 > Journal de bord : il sert de mémoire entre les sessions. On le met à jour à chaque étape stabilisée, l'entrée la plus récente en haut du journal.
 > La description technique (composants, API, **modèle de données**, règles métier, tests) est dans [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## État actuel (2026-11-20)
+## État actuel (2026-11-21)
 
 ### Fait
 - **Axe 1 / socle** : CRUD pour les **biens** (`/api/properties`), les **locataires** (`/api/tenants`) et les **baux** (`/api/leases`, avec en plus `GET /property/:propertyId` et `POST /:id/terminate`). Endpoint `/health`.
 - **Front** : Dashboard, Biens, Locataires, Baux. Layout avec Sidebar sur desktop et BottomNav sur mobile, manifest PWA.
 - **Schéma Prisma complet** déjà en place (migration `init`), y compris pour les phases à venir : RentPayment/Receipt, BankTransaction, Charge/ChargeRegularization, IrlIndex, LmnpEntry, Document, Inventory (pièces, éléments, photos), User/Ownership (copropriété avec quote-part).
 - **Industrialisation** : dépôt git, CI GitHub Actions (compilation, tests et images Docker publiées sur GHCR), `.dockerignore`, CLAUDE.md et ce fichier.
-- **Tests automatisés** : 47 tests d'intégration API (Vitest + Supertest sur base `_test`, dont 4 tests de contrat API ↔ front) et 37 tests front (Vitest + Testing Library). `npm run verify` à la racine = build + tests des deux apps.
+- **Tests automatisés** : 70 tests d'intégration API (Vitest + Supertest sur base `_test`, dont contrat API ↔ front, droits et sessions) et 48 tests front (Vitest + Testing Library). `npm run verify` à la racine = build + tests des deux apps.
 - **Phase 2** (loyers, quittances PDF, Paramètres) : livrée sur `main`.
-- **Refonte du front d'après la maquette** : en cours sur la branche `refonte-front` (voir plus bas).
+- **Refonte du front d'après la maquette** : étapes 1 à 4 faites sur la branche `refonte-front` (voir plus bas).
+- **Multipropriétaires** : connexion, données filtrées par propriétaire, copropriété, signatures ; branche `multi-proprietaires` (partie de `refonte-front`), voir plus bas.
 
 ### Tester à distance (Thomas travaille souvent en SSH)
 - La machine est dans le réseau Tailscale de Thomas (adresse : `tailscale ip -4`, notée ici `<IP_TAILSCALE>`). On lance l'API de dev sur un autre port que le conteneur, et Vite en l'écoutant **uniquement sur l'adresse Tailscale** :
@@ -21,8 +22,8 @@
 - `API_URL` (dans `vite.config.ts`) choisit la cible du proxy `/api` (par défaut `http://localhost:3001`).
 
 ### Pas encore fait / points d'attention
-- **Pas d'authentification** : le modèle `User` existe, mais aucune route de login ni protection de l'API. À faire avant toute exposition sur Internet.
-- Les locataires et les baux ne sont pas filtrés par propriétaire (seuls les biens le sont via `Ownership`) : à traiter avec l'auth.
+- **Avant une exposition sur Internet** : HTTPS puis `COOKIE_SECURE=true`, limitation des tentatives de connexion, en-têtes de sécurité dans nginx.
+- `SESSION_SECRET` est obligatoire pour le conteneur `api` : il est dans le `.env` de la racine sur la machine de dev (à générer ailleurs avec `openssl rand -hex 32`).
 - **Docker (snap) et AppArmor** : `docker compose up -d --build` échoue sur `cannot stop container: permission denied` (AppArmor `docker-default` refuse les signaux de `snap.docker.dockerd`). Les anciens conteneurs `api`/`web` tournent encore. Il faut un `sudo` (voir le journal du 2026-11-20).
 - Racine : `package.json` contient des devDependencies inutilisées (`typescript ^7`, `@types/node ^26`), à nettoyer.
 
@@ -59,6 +60,29 @@ Reste à faire :
 - [x] Interface testée par Thomas à distance (via Tailscale) : « ça fonctionne plutôt bien », mais pas encore tout vérifié. Poussée sur `main`.
 - [ ] Plus tard : envoi de la quittance par e-mail (`Receipt.sentAt`, il faut un SMTP), reçu pour un paiement partiel, échéances sur le Tableau de bord.
 
+## Multipropriétaires : développé (branche `multi-proprietaires`), en attente de test par Thomas
+
+Décisions (Thomas, 2026-11-21) : anticiper tout de suite le cas de plusieurs propriétaires par bien, avec un compte par
+personne ; tous les copropriétaires ont les mêmes droits ; signatures des quittances en simple image, sans aller plus loin.
+Choix par défaut proposés et retenus : comptes créés par l'administrateur (mot de passe provisoire), locataire commun
+vu par chacun à travers ses propres baux, quote-part affichée maintenant et utilisée plus tard pour les impôts.
+
+Fait :
+- Migration `20261121090000_multi_proprietaires` : `User.signaturePath`, `mustChangePassword`, `sessionVersion` ;
+  `Tenant.createdById` (repris des baux existants, sinon le premier administrateur).
+- API : connexion par cookie de session signé, toutes les routes protégées ; filtrage de tous les accès par propriétaire
+  (404 pour les données d'un autre) ; copropriétaires d'un bien ; comptes et mots de passe provisoires (administrateur) ;
+  changement de mot de passe ; signature apposée sur les quittances, une par copropriétaire. Détails : ARCHITECTURE.md § 3.3 et § 5.
+- Front : écran de connexion, changement obligatoire du mot de passe provisoire, déconnexion (barre latérale et menu
+  « Plus »), Paramètres (signature, mot de passe, comptes), fenêtre « Propriétaires » sur chaque bien.
+- Corrigé en route : les listes de biens et de locataires ne renvoyaient que les baux **en cours**, donc les historiques
+  de la refonte (bien, onglet Anciens) restaient vides en vrai, alors que les tests du front passaient avec leurs
+  données simulées. Corrigé côté API et couvert par un test.
+- Vérifié sur l'API de dev à travers Vite : 401 sans session, connexion `admin@local.dev` / `changeme`, données, déconnexion.
+
+À anticiper (ARCHITECTURE.md § 5.1) : répartition des revenus et charges par quote-part pour les impôts (et historique
+des quotes-parts par année ?), régime fiscal par copropriétaire si besoin.
+
 ## Refonte du front d'après la maquette : en cours (branche `refonte-front`)
 
 Référence : la maquette de Thomas (`GestionLocative.jsx`, sur le disque de la box, voir le journal du 2026-11-20 soir).
@@ -78,6 +102,10 @@ et dans la fiche du bail les blocs Documents (US-04) et Interventions (pas de mo
 colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locataire (pièces obligatoires) attend US-04.
 
 ## Journal
+
+### 2026-11-21
+- Multipropriétaires développé (voir la section dédiée). 70 tests API, 48 tests front.
+- Bug trouvé pendant le développement du front : une boucle infinie de requêtes quand la session est absente (la 401 du profil relançait le profil). Corrigé et couvert par les tests de l'écran de connexion.
 
 ### 2026-11-20 (nuit)
 - **Historique de `main` réécrit** (accord de Thomas, dépôt public) : le journal poussé plus tôt contenait des détails du réseau local. Les commits `5424658` et `44e1a9c` sont fusionnés en `60f7cf3` (mêmes fichiers finaux), puis `main` a été forcée sur GitHub. La branche `refonte-front` a été reconstruite par-dessus. Des sauvegardes locales des anciennes branches existent (`sauvegarde/*`), à ne pas pousser. Règle : **aucun détail du réseau, de la famille ou des locataires dans le dépôt** (le dépôt est public).

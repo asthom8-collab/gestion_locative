@@ -1,13 +1,24 @@
 const BASE = '/api'
 
+/** Erreur renvoyée par l'API, avec son code HTTP (401 = non connecté, 403 = interdit…). */
+export class ApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+export const isUnauthorized = (e: unknown) => e instanceof ApiError && e.status === 401
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  // Le cookie de session part avec la requête (même origine, via le proxy /api)
   const res = await fetch(`${BASE}${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   })
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Erreur réseau' }))
-    throw new Error(err.error ?? 'Erreur inconnue')
+    throw new ApiError(res.status, err?.error ?? 'Erreur inconnue')
   }
   if (res.status === 204) return undefined as T
   return res.json()
@@ -22,6 +33,8 @@ export const api = {
     update: (id: string, data: Partial<import('../types').CreatePropertyInput>) =>
       request<import('../types').Property>(`/properties/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) => request<void>(`/properties/${id}`, { method: 'DELETE' }),
+    setOwners: (id: string, owners: { userId: string; share: number }[]) =>
+      request<import('../types').Ownership[]>(`/properties/${id}/owners`, { method: 'PUT', body: JSON.stringify({ owners }) }),
   },
   tenants: {
     list: () => request<import('../types').Tenant[]>('/tenants'),
@@ -70,9 +83,28 @@ export const api = {
     receiptUrl: (id: string, download = false) =>
       `${BASE}/rent-payments/${id}/receipt${download ? '?download' : ''}`,
   },
+  auth: {
+    login: (email: string, password: string) =>
+      request<import('../types').Profile>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+    logout: () => request<void>('/auth/logout', { method: 'POST' }),
+  },
   me: {
     get: () => request<import('../types').Profile>('/me'),
     update: (data: import('../types').UpdateProfileInput) =>
       request<import('../types').Profile>('/me', { method: 'PATCH', body: JSON.stringify(data) }),
+    changePassword: (currentPassword: string, newPassword: string) =>
+      request<import('../types').Profile>('/me/password', { method: 'PUT', body: JSON.stringify({ currentPassword, newPassword }) }),
+    /** image : data URL PNG ou JPEG */
+    setSignature: (image: string) =>
+      request<import('../types').Profile>('/me/signature', { method: 'PUT', body: JSON.stringify({ image }) }),
+    deleteSignature: () => request<import('../types').Profile>('/me/signature', { method: 'DELETE' }),
+    signatureUrl: `${BASE}/me/signature`,
+  },
+  users: {
+    directory: () => request<import('../types').DirectoryUser[]>('/users'),
+    create: (data: import('../types').CreateUserInput) =>
+      request<import('../types').Profile>('/users', { method: 'POST', body: JSON.stringify(data) }),
+    resetPassword: (id: string, password: string) =>
+      request<void>(`/users/${id}/password`, { method: 'PUT', body: JSON.stringify({ password }) }),
   },
 }

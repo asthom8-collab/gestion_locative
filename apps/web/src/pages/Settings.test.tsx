@@ -28,3 +28,38 @@ describe('page Paramètres', () => {
     expect(await screen.findByText('Enregistré')).toBeInTheDocument()
   })
 })
+
+describe('page Paramètres : comptes et signature', () => {
+  const admin = { ...profile, mustChangePassword: false, hasSignature: false }
+  const users = [{ id: 'u1', firstName: 'Thomas', lastName: 'Admin', email: 'admin@local.dev' }]
+
+  it('l’administrateur crée un compte avec un mot de passe provisoire', async () => {
+    const fetchMock = mockApi({ '/api/me': admin, '/api/users': users })
+    renderWithProviders(<Settings />)
+    fireEvent.click(await screen.findByRole('button', { name: /Nouveau compte/ }))
+    fireEvent.change(screen.getByLabelText('Prénom', { selector: '.fixed input' }), { target: { value: 'Claire' } })
+    fireEvent.change(screen.getByLabelText('Nom', { selector: '.fixed input' }), { target: { value: 'Copro' } })
+    fireEvent.change(screen.getByLabelText('E-mail (identifiant de connexion)'), { target: { value: 'claire@local.dev' } })
+    const password = (screen.getByLabelText('Mot de passe provisoire') as HTMLInputElement).value
+    expect(password).toMatch(/^[A-Za-z0-9]{12}$/)
+    mockApi({ '/api/me': admin, '/api/users': users, 'POST /api/users': { ...admin, id: 'u2', email: 'claire@local.dev' } })
+    fireEvent.click(screen.getByRole('button', { name: /Créer le compte/ }))
+    expect(await screen.findByRole('status')).toHaveTextContent(password)
+  })
+
+  it('un utilisateur non administrateur ne voit pas la gestion des comptes', async () => {
+    mockApi({ '/api/me': { ...admin, role: 'USER' }, '/api/users': users })
+    renderWithProviders(<Settings />)
+    expect(await screen.findByText('Signature')).toBeInTheDocument()
+    expect(screen.queryByText('Comptes')).not.toBeInTheDocument()
+  })
+
+  it('refuse une signature qui n’est pas une image PNG ou JPEG, sans appeler l’API', async () => {
+    const fetchMock = mockApi({ '/api/me': admin, '/api/users': users })
+    renderWithProviders(<Settings />)
+    const input = await screen.findByLabelText('Fichier de signature')
+    fireEvent.change(input, { target: { files: [new File(['<svg/>'], 'sig.svg', { type: 'image/svg+xml' })] } })
+    expect(await screen.findByRole('alert')).toHaveTextContent('PNG ou JPEG')
+    expect(fetchMock.mock.calls.some(([u]) => String(u).includes('signature'))).toBe(false)
+  })
+})

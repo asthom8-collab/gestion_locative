@@ -40,6 +40,7 @@ async function main() {
       lastName: 'Dupont',
       email: 'jean.dupont@example.com',
       phone: '0601020304',
+      createdById: admin.id,
     },
   })
 

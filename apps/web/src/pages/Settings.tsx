@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMe, useUpdateMe } from '../hooks/useMe'
+import { SignatureCard, PasswordCard, AccountsCard } from './settings/sections'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -44,7 +45,8 @@ export function Settings() {
   return (
     <div>
       <PageHeader title="Paramètres" subtitle={me?.email} />
-      <Card className="p-5 max-w-xl">
+      <div className="space-y-4 max-w-xl">
+      <Card className="p-5">
         <h3 className="font-semibold text-slate-900 mb-1">Identité du bailleur</h3>
         <p className="text-sm text-slate-500 mb-4">Ces informations sont imprimées sur les quittances de loyer.</p>
         <div className="grid grid-cols-2 gap-3">
@@ -66,6 +68,10 @@ export function Settings() {
           </Button>
         </div>
       </Card>
+      <SignatureCard />
+      <PasswordCard />
+      {me?.role === 'ADMIN' && <AccountsCard />}
+      </div>
     </div>
   )
 }

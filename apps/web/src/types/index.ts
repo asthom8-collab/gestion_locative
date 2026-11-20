@@ -143,6 +143,25 @@ export interface Profile {
   address: string | null
   zipCode: string | null
   city: string | null
+  /** Compte créé par l'administrateur : changer le mot de passe avant d'accéder au reste */
+  mustChangePassword: boolean
+  hasSignature: boolean
+}
+
+/** Annuaire des utilisateurs (choix des copropriétaires). */
+export interface DirectoryUser {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+}
+
+export interface CreateUserInput {
+  email: string
+  firstName: string
+  lastName: string
+  password: string
+  role?: 'ADMIN' | 'USER'
 }
 
 export type UpdateProfileInput = Partial<Pick<Profile, 'firstName' | 'lastName' | 'address' | 'zipCode' | 'city'>>

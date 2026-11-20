@@ -10,7 +10,8 @@ import { Field, inputCls } from '../components/ui/Field'
 import { Empty } from '../components/ui/Empty'
 import { ErrorAlert } from '../components/ui/ErrorAlert'
 import { PropTypeIcon } from '../components/ui/PropTypeIcon'
-import { Building2, Plus, Pencil, Trash2, MapPin, Check, ChevronRight, ClipboardList, UserCircle2 } from '../components/icons'
+import { OwnersModal } from '../components/OwnersModal'
+import { Building2, Plus, Pencil, Trash2, MapPin, Check, ChevronRight, ClipboardList, UserCircle2, Users2 } from '../components/icons'
 import { eur, fmtMonth, fullName, PROPERTY_TYPE_LABELS, FISCAL_REGIMES } from '../lib/format'
 import type { CreatePropertyInput, Lease, Property, PropertyType, FiscalRegime } from '../types'
 
@@ -81,6 +82,7 @@ export function Properties() {
 
   const [modal, setModal] = useState<'create' | Property | null>(null)
   const [form, setForm] = useState<CreatePropertyInput>(blank)
+  const [owners, setOwners] = useState<Property | null>(null)
 
   const openCreate = () => { modalErr.clear(); setForm(blank); setModal('create') }
   const openEdit = (p: Property) => {
@@ -138,6 +140,7 @@ export function Properties() {
                     )}
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    <button onClick={() => setOwners(p)} aria-label={`Propriétaires de ${p.name}`} title="Propriétaires" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><Users2 size={15} /></button>
                     <button onClick={() => openEdit(p)} aria-label={`Modifier ${p.name}`} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><Pencil size={15} /></button>
                     <button onClick={() => remove(p)} aria-label={`Supprimer ${p.name}`} className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600"><Trash2 size={15} /></button>
                   </div>
@@ -148,6 +151,8 @@ export function Properties() {
           })}
         </div>
       )}
+
+      {owners && <OwnersModal property={owners} onClose={() => setOwners(null)} />}
 
       {modal && (
         <Modal title={modal === 'create' ? 'Nouveau bien' : 'Modifier le bien'} onClose={() => setModal(null)}>
