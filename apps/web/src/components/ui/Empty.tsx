@@ -1,7 +1,8 @@
+import type { LucideIcon } from 'lucide-react'
 import { Button } from './Button'
 
 interface EmptyProps {
-  Icon: React.ComponentType<{ size?: number }>
+  Icon: LucideIcon
   title: string
   hint?: string
   action?: { label: string; onClick: () => void }

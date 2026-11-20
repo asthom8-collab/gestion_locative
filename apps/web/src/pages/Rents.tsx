@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   useRentPayments, useGenerateRentPayments, useRecordPayment, useCancelPayment,
   useDeleteRentPayment, useGenerateReceipt,
@@ -13,7 +13,8 @@ import { Field, inputCls } from '../components/ui/Field'
 import { Empty } from '../components/ui/Empty'
 import { StatCard } from '../components/ui/StatCard'
 import { Receipt, ChevronLeft, ChevronRight, Check, Download, Euro, CircleCheck, AlertCircle, Plus } from '../components/icons'
-import type { PaymentStatus, RentPayment } from '../types'
+import { PaymentStatusBadge } from '../components/ui/PaymentStatusBadge'
+import type { RentPayment } from '../types'
 
 const eur = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n)
 const fmtDay = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'UTC' })
@@ -22,18 +23,6 @@ const monthTitle = (year: number, month: number) => {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 const today = () => new Date().toISOString().slice(0, 10)
-
-const STATUS: Record<PaymentStatus, { label: string; cls: string }> = {
-  RECEIVED: { label: 'Payé', cls: 'bg-emerald-50 text-emerald-700' },
-  PARTIAL: { label: 'Partiel', cls: 'bg-amber-50 text-amber-700' },
-  LATE: { label: 'En retard', cls: 'bg-rose-50 text-rose-700' },
-  PENDING: { label: 'À venir', cls: 'bg-slate-100 text-slate-600' },
-}
-
-function StatusBadge({ status }: { status: PaymentStatus }) {
-  const s = STATUS[status]
-  return <span className={`shrink-0 text-[11px] px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
-}
 
 /** Période affichée seulement si elle ne couvre pas le mois entier (prorata). */
 function isProrata(p: RentPayment) {
@@ -47,7 +36,11 @@ const linkBtn = 'text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-s
 
 export function Rents() {
   const now = new Date()
-  const [{ year, month }, setPeriod] = useState({ year: now.getFullYear(), month: now.getMonth() + 1 })
+  const [params] = useSearchParams()
+  const [{ year, month }, setPeriod] = useState(() => {
+    const y = Number(params.get('year')), m = Number(params.get('month'))
+    return y && m >= 1 && m <= 12 ? { year: y, month: m } : { year: now.getFullYear(), month: now.getMonth() + 1 }
+  })
   const shift = (delta: number) => setPeriod(({ year, month }) => {
     const d = new Date(Date.UTC(year, month - 1 + delta, 1))
     return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1 }
@@ -127,7 +120,7 @@ export function Rents() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-slate-900 truncate">{p.lease.property.name}</span>
-                    <StatusBadge status={p.status} />
+                    <PaymentStatusBadge status={p.status} />
                   </div>
                   <div className="text-sm text-slate-600 mt-0.5">{p.lease.tenant.firstName} {p.lease.tenant.lastName}</div>
                   <div className="text-xs text-slate-400 mt-0.5">

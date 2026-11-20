@@ -1,6 +1,7 @@
+import type { LucideIcon } from 'lucide-react'
 type Tone = 'green' | 'amber' | 'indigo' | 'slate'
 interface StatCardProps {
-  Icon: React.ComponentType<{ size?: number }>
+  Icon: LucideIcon
   label: string
   value: string | number
   tone: Tone
