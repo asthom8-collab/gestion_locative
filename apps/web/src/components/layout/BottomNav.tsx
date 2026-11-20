@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Building2, FileSignature, Receipt, MoreHorizontal } from '../icons'
+import { LayoutDashboard, Building2, FileSignature, Receipt, Settings } from '../icons'
 
 const NAV = [
   { to: '/', label: 'Accueil', Icon: LayoutDashboard, end: true },
   { to: '/properties', label: 'Biens', Icon: Building2 },
   { to: '/leases', label: 'Locations', Icon: FileSignature },
-  { to: '/quittances', label: 'Quitt.', Icon: Receipt },
+  { to: '/rents', label: 'Loyers', Icon: Receipt },
+  { to: '/settings', label: 'Réglages', Icon: Settings },
 ]
 
 export function BottomNav() {
@@ -19,10 +20,6 @@ export function BottomNav() {
           <span>{label}</span>
         </NavLink>
       ))}
-      <button className="flex flex-col items-center gap-0.5 py-2.5 text-[10px] text-slate-400">
-        <MoreHorizontal size={20} />
-        <span>Plus</span>
-      </button>
     </nav>
   )
 }

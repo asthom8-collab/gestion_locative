@@ -24,6 +24,10 @@ model User {
   firstName    String
   lastName     String
   role         Role        @default(USER)
+  // Adresse du bailleur, imprimée sur les quittances
+  address      String?
+  zipCode      String?
+  city         String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
@@ -153,6 +157,12 @@ model RentPayment {
   leaseId           String
   periodMonth       Int
   periodYear        Int
+  // Période couverte (prorata si le bail commence ou finit dans le mois)
+  periodStart       DateTime
+  periodEnd         DateTime
+  // Montants attendus figés à la génération (loyer et charges, proratisés)
+  rentAmount        Float
+  chargesAmount     Float
   expectedAmount    Float
   receivedAmount    Float?
   paymentDate       DateTime?
@@ -164,6 +174,8 @@ model RentPayment {
   updatedAt         DateTime      @updatedAt
 
   receipt           Receipt?
+
+  @@unique([leaseId, periodYear, periodMonth])
 }
 
 model Receipt {

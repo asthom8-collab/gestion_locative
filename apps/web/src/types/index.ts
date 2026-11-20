@@ -91,3 +91,49 @@ export interface CreateLeaseInput {
   irlQuarter?: number
   irlYear?: number
 }
+
+export type PaymentStatus = 'PENDING' | 'RECEIVED' | 'PARTIAL' | 'LATE'
+
+export interface Receipt {
+  id: string
+  rentPaymentId: string
+  filePath: string
+  sentAt: string | null
+  createdAt: string
+}
+
+export interface RentPayment {
+  id: string
+  leaseId: string
+  periodMonth: number
+  periodYear: number
+  periodStart: string
+  periodEnd: string
+  rentAmount: number
+  chargesAmount: number
+  expectedAmount: number
+  receivedAmount: number | null
+  paymentDate: string | null
+  status: PaymentStatus
+  dueDate: string
+  receipt: Receipt | null
+  lease: {
+    id: string
+    rentDayOfMonth: number
+    property: Pick<Property, 'id' | 'name' | 'address' | 'city'>
+    tenant: Pick<Tenant, 'id' | 'firstName' | 'lastName' | 'email'>
+  }
+}
+
+export interface Profile {
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  role: 'ADMIN' | 'USER'
+  address: string | null
+  zipCode: string | null
+  city: string | null
+}
+
+export type UpdateProfileInput = Partial<Pick<Profile, 'firstName' | 'lastName' | 'address' | 'zipCode' | 'city'>>

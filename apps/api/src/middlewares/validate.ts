@@ -11,3 +11,15 @@ export function validate(schema: ZodSchema) {
     }
   }
 }
+
+/** Valide et normalise req.query (ex. z.coerce.number() pour les paramètres numériques). */
+export function validateQuery(schema: ZodSchema) {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      req.query = schema.parse(req.query)
+      next()
+    } catch (err) {
+      next(err)
+    }
+  }
+}

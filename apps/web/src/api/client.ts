@@ -43,4 +43,31 @@ export const api = {
         body: JSON.stringify({ endDate }),
       }),
   },
+  rentPayments: {
+    list: (year: number, month: number) =>
+      request<import('../types').RentPayment[]>(`/rent-payments?year=${year}&month=${month}`),
+    generate: (year: number, month: number) =>
+      request<{ created: number; payments: import('../types').RentPayment[] }>('/rent-payments/generate', {
+        method: 'POST',
+        body: JSON.stringify({ year, month }),
+      }),
+    recordPayment: (id: string, receivedAmount: number, paymentDate: string) =>
+      request<import('../types').RentPayment>(`/rent-payments/${id}/payment`, {
+        method: 'PUT',
+        body: JSON.stringify({ receivedAmount, paymentDate }),
+      }),
+    cancelPayment: (id: string) =>
+      request<import('../types').RentPayment>(`/rent-payments/${id}/payment`, { method: 'DELETE' }),
+    delete: (id: string) => request<void>(`/rent-payments/${id}`, { method: 'DELETE' }),
+    generateReceipt: (id: string) =>
+      request<import('../types').Receipt>(`/rent-payments/${id}/receipt`, { method: 'POST' }),
+    /** URL du PDF (ouvert dans un nouvel onglet, ou téléchargé avec download=true) */
+    receiptUrl: (id: string, download = false) =>
+      `${BASE}/rent-payments/${id}/receipt${download ? '?download' : ''}`,
+  },
+  me: {
+    get: () => request<import('../types').Profile>('/me'),
+    update: (data: import('../types').UpdateProfileInput) =>
+      request<import('../types').Profile>('/me', { method: 'PATCH', body: JSON.stringify(data) }),
+  },
 }

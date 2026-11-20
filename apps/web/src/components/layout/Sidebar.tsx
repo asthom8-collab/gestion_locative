@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Building2, Users, FileSignature, UserCircle2 } from '../icons'
+import { LayoutDashboard, Building2, Users, FileSignature, Receipt, UserCircle2 } from '../icons'
 
 const NAV = [
   { to: '/', label: 'Tableau de bord', Icon: LayoutDashboard, end: true },
   { to: '/properties', label: 'Biens', Icon: Building2 },
   { to: '/tenants', label: 'Locataires', Icon: Users },
   { to: '/leases', label: 'Locations', Icon: FileSignature },
+  { to: '/rents', label: 'Loyers', Icon: Receipt },
 ]
 
 export function Sidebar() {
@@ -37,7 +38,7 @@ export function Sidebar() {
         <div className="grid place-items-center w-9 h-9 rounded-full bg-slate-700 text-white shrink-0">
           <UserCircle2 size={15} />
         </div>
-        <div className="text-sm text-white truncate">Compte</div>
+        <div className="text-sm text-white truncate">Paramètres</div>
       </NavLink>
     </aside>
   )

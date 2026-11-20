@@ -16,6 +16,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
-RUN mkdir -p /app/storage/{pdfs/quittances,documents/{leases,tenants},inventories}
+# Les sous-dossiers (pdfs/quittances/…) sont créés par l’API à la première écriture
+RUN mkdir -p /app/storage
 EXPOSE 3001
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]

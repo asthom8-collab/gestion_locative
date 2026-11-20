@@ -6,6 +6,8 @@ import { Dashboard } from './pages/Dashboard'
 import { Properties } from './pages/Properties'
 import { Tenants } from './pages/Tenants'
 import { Leases } from './pages/Leases'
+import { Rents } from './pages/Rents'
+import { Settings } from './pages/Settings'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } })
 
@@ -22,6 +24,8 @@ export default function App() {
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/tenants" element={<Tenants />} />
                 <Route path="/leases" element={<Leases />} />
+                <Route path="/rents" element={<Rents />} />
+                <Route path="/settings" element={<Settings />} />
               </Routes>
             </main>
           </div>
