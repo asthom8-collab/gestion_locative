@@ -48,7 +48,7 @@ Fait :
 - Vérifié à la main : parcours complet en curl sur l'API de dev, puis avec la nouvelle image Docker de l'API (PDF généré, texte contrôlé : accents, €, une page).
 
 Reste à faire :
-- [ ] Tester l'interface dans un navigateur (pas de navigateur disponible pour Claude dans cette session), puis pousser.
+- [ ] Tester l'interface dans un navigateur (pas de navigateur disponible pour Claude dans cette session), puis pousser sur `main`. Le commit `cfa9855` est déjà sauvegardé sur la branche distante `phase-2-loyers` (`main` distant est encore à `0568979`).
 - [ ] Plus tard : envoi de la quittance par e-mail (`Receipt.sentAt`, il faut un SMTP), reçu pour un paiement partiel, échéances sur le Tableau de bord.
 
 ## Journal
