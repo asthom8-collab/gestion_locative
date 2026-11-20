@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '../lib/prisma'
+import { ownedLease } from './tenants'
 
 const listInclude = {
   lease: {
@@ -15,25 +16,25 @@ const listInclude = {
 
 export type RentPaymentWithLease = Prisma.RentPaymentGetPayload<{ include: typeof listInclude }>
 
-export type ListFilter = { year?: number; month?: number; leaseId?: string }
+export type ListFilter = { userId: string; year?: number; month?: number; leaseId?: string }
 
 export const rentPaymentsRepository = {
-  findMany({ year, month, leaseId }: ListFilter) {
+  findMany({ userId, year, month, leaseId }: ListFilter) {
     return prisma.rentPayment.findMany({
-      where: { periodYear: year, periodMonth: month, leaseId },
+      where: { periodYear: year, periodMonth: month, leaseId, lease: ownedLease(userId) },
       include: listInclude,
       orderBy: [{ periodYear: 'desc' }, { periodMonth: 'desc' }, { lease: { property: { name: 'asc' } } }],
     })
   },
 
-  findById(id: string) {
-    return prisma.rentPayment.findUnique({ where: { id }, include: listInclude })
+  findById(id: string, userId: string) {
+    return prisma.rentPayment.findFirst({ where: { id, lease: ownedLease(userId) }, include: listInclude })
   },
 
   /** Paiement avec tout ce qu'il faut pour la quittance (bailleurs, locataire, logement). */
-  findForReceipt(id: string) {
-    return prisma.rentPayment.findUnique({
-      where: { id },
+  findForReceipt(id: string, userId: string) {
+    return prisma.rentPayment.findFirst({
+      where: { id, lease: ownedLease(userId) },
       include: {
         receipt: true,
         lease: {
@@ -47,9 +48,10 @@ export const rentPaymentsRepository = {
   },
 
   /** Baux qui couvrent au moins un jour de la période [start, end]. */
-  findLeasesCovering(start: Date, end: Date) {
+  findLeasesCovering(start: Date, end: Date, userId: string) {
     return prisma.lease.findMany({
       where: {
+        ...ownedLease(userId),
         startDate: { lte: new Date(end.getTime() + 86_399_999) },
         OR: [{ endDate: null, active: true }, { endDate: { gte: start } }],
       },

@@ -28,10 +28,17 @@ model User {
   address      String?
   zipCode      String?
   city         String?
+  // Image de la signature (PNG ou JPEG), apposée sur les quittances ; chemin relatif à STORAGE_PATH
+  signaturePath      String?
+  // Compte créé par un administrateur avec un mot de passe provisoire
+  mustChangePassword Boolean  @default(false)
+  // Incrémentée au changement de mot de passe : invalide les sessions ouvertes ailleurs
+  sessionVersion     Int      @default(0)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  ownerships   Ownership[]
+  ownerships     Ownership[]
+  createdTenants Tenant[]   @relation("TenantCreatedBy")
 }
 
 // ─────────────────────────────────────────
@@ -94,6 +101,9 @@ model Tenant {
   email     String
   phone     String?
   iban      String?
+  // Propriétaire qui a saisi le locataire : il le voit même sans bail (sinon, visibilité par les baux)
+  createdBy   User?    @relation("TenantCreatedBy", fields: [createdById], references: [id])
+  createdById String?
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 

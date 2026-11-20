@@ -1,5 +1,6 @@
 import { prisma } from '../lib/prisma'
 import { LeaseType } from '@prisma/client'
+import { ownedLease } from './tenants'
 
 export type CreateLeaseInput = {
   propertyId: string
@@ -18,8 +19,9 @@ export type CreateLeaseInput = {
 export type UpdateLeaseInput = Partial<Omit<CreateLeaseInput, 'propertyId' | 'tenantId'>>
 
 export const leasesRepository = {
-  findAll() {
+  findAll(userId: string) {
     return prisma.lease.findMany({
+      where: ownedLease(userId),
       include: {
         property: { select: { id: true, name: true, address: true, city: true } },
         tenant: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -28,9 +30,9 @@ export const leasesRepository = {
     })
   },
 
-  findByProperty(propertyId: string) {
+  findByProperty(propertyId: string, userId: string) {
     return prisma.lease.findMany({
-      where: { propertyId },
+      where: { propertyId, ...ownedLease(userId) },
       include: {
         tenant: { select: { id: true, firstName: true, lastName: true, email: true } },
         rentPayments: { orderBy: { periodYear: 'desc' }, take: 3 },
@@ -39,9 +41,9 @@ export const leasesRepository = {
     })
   },
 
-  findById(id: string) {
-    return prisma.lease.findUnique({
-      where: { id },
+  findById(id: string, userId: string) {
+    return prisma.lease.findFirst({
+      where: { id, ...ownedLease(userId) },
       include: {
         property: true,
         tenant: true,

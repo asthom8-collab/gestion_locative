@@ -2,6 +2,7 @@ import { PaymentStatus } from '@prisma/client'
 import { AppError } from '../middlewares/errorHandler'
 import { computeMonthlyDue, dueDate, monthBounds, round2, toUtcDay } from '../lib/period'
 import { renderReceiptPdf } from '../lib/receiptPdf'
+import { readFile } from 'node:fs/promises'
 import { removeFile, saveFile, storagePath } from '../lib/storage'
 import { ListFilter, RentPaymentWithLease, rentPaymentsRepository } from '../repositories/rentPayments'
 
@@ -12,8 +13,8 @@ function present(p: RentPaymentWithLease, today = toUtcDay(new Date())) {
   return { ...p, dueDate: due, status }
 }
 
-async function getOrThrow(id: string) {
-  const payment = await rentPaymentsRepository.findById(id)
+async function getOrThrow(id: string, userId: string) {
+  const payment = await rentPaymentsRepository.findById(id, userId)
   if (!payment) throw new AppError(404, 'Échéance introuvable')
   return payment
 }
@@ -30,21 +31,21 @@ export const rentPaymentsService = {
     return payments.map((p) => present(p))
   },
 
-  /** Crée les échéances manquantes du mois pour tous les baux qui le couvrent (idempotent). */
-  async generate(year: number, month: number) {
+  /** Crée les échéances manquantes du mois pour les baux de l'utilisateur qui le couvrent (idempotent). */
+  async generate(userId: string, year: number, month: number) {
     const { start, end } = monthBounds(year, month)
-    const leases = await rentPaymentsRepository.findLeasesCovering(start, end)
+    const leases = await rentPaymentsRepository.findLeasesCovering(start, end, userId)
     const rows = leases.flatMap((lease) => {
       const due = computeMonthlyDue(lease, year, month)
       return due ? [{ leaseId: lease.id, periodYear: year, periodMonth: month, ...due }] : []
     })
     const { count } = await rentPaymentsRepository.createMany(rows)
-    return { created: count, payments: await rentPaymentsService.list({ year, month }) }
+    return { created: count, payments: await rentPaymentsService.list({ userId, year, month }) }
   },
 
   /** Enregistre le montant total reçu pour l'échéance (remplace la saisie précédente). */
-  async recordPayment(id: string, receivedAmount: number, paymentDate: Date) {
-    const payment = await getOrThrow(id)
+  async recordPayment(id: string, userId: string, receivedAmount: number, paymentDate: Date) {
+    const payment = await getOrThrow(id, userId)
     const amount = round2(receivedAmount)
     const status: PaymentStatus = amount >= payment.expectedAmount ? 'RECEIVED' : 'PARTIAL'
     // Une quittance existante ne correspond plus au paiement saisi
@@ -58,8 +59,8 @@ export const rentPaymentsService = {
     return present(updated)
   },
 
-  async cancelPayment(id: string) {
-    const payment = await getOrThrow(id)
+  async cancelPayment(id: string, userId: string) {
+    const payment = await getOrThrow(id, userId)
     if (payment.bankTransactionId) {
       throw new AppError(409, 'Ce paiement vient du rapprochement bancaire')
     }
@@ -72,8 +73,8 @@ export const rentPaymentsService = {
     return present(updated)
   },
 
-  async remove(id: string) {
-    const payment = await getOrThrow(id)
+  async remove(id: string, userId: string) {
+    const payment = await getOrThrow(id, userId)
     if (payment.receivedAmount !== null) {
       throw new AppError(409, 'Un paiement est enregistré : annulez-le avant de supprimer l’échéance')
     }
@@ -81,8 +82,8 @@ export const rentPaymentsService = {
   },
 
   /** Génère (ou régénère) la quittance PDF d'une échéance payée en totalité. */
-  async generateReceipt(id: string) {
-    const payment = await rentPaymentsRepository.findForReceipt(id)
+  async generateReceipt(id: string, userId: string) {
+    const payment = await rentPaymentsRepository.findForReceipt(id, userId)
     if (!payment) throw new AppError(404, 'Échéance introuvable')
     if (payment.status !== 'RECEIVED' || !payment.paymentDate || payment.receivedAmount === null) {
       throw new AppError(409, 'Une quittance ne peut être établie que pour un loyer payé en totalité')
@@ -95,8 +96,12 @@ export const rentPaymentsService = {
       throw new AppError(409, `Adresse du bailleur manquante (${incomplete.firstName} ${incomplete.lastName}) : complétez-la dans Paramètres`)
     }
 
+    // Signatures des bailleurs (image facultative ; fichier manquant = pas de signature)
+    const signatures = await Promise.all(owners.map((u) =>
+      u.signaturePath ? readFile(storagePath(u.signaturePath)).catch(() => undefined) : Promise.resolve(undefined)))
     const pdf = await renderReceiptPdf({
-      landlords: owners.map((u) => ({
+      landlords: owners.map((u, i) => ({
+        signature: signatures[i],
         name: `${u.firstName} ${u.lastName}`,
         address: u.address!,
         zipCode: u.zipCode!,
@@ -120,8 +125,8 @@ export const rentPaymentsService = {
   },
 
   /** Chemin absolu et nom de téléchargement de la quittance. */
-  async getReceiptFile(id: string) {
-    const payment = await rentPaymentsRepository.findForReceipt(id)
+  async getReceiptFile(id: string, userId: string) {
+    const payment = await rentPaymentsRepository.findForReceipt(id, userId)
     if (!payment) throw new AppError(404, 'Échéance introuvable')
     if (!payment.receipt) throw new AppError(404, 'Pas de quittance pour cette échéance')
     const month = String(payment.periodMonth).padStart(2, '0')

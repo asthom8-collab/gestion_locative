@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { validate } from '../middlewares/validate'
 import { meController } from '../controllers/me'
+import { passwordSchema } from './users'
 
 const router = Router()
 
@@ -16,7 +17,16 @@ const updateSchema = z.object({
   city: optionalText,
 })
 
+const passwordChangeSchema = z.object({ currentPassword: z.string().min(1).max(200), newPassword: passwordSchema })
+
+// Image en data URL ; la limite de taille du corps JSON est relevée pour cette route (voir app.ts)
+const signatureSchema = z.object({ image: z.string().max(450_000) })
+
 router.get('/', meController.get)
 router.patch('/', validate(updateSchema), meController.update)
+router.put('/password', validate(passwordChangeSchema), meController.changePassword)
+router.get('/signature', meController.getSignature)
+router.put('/signature', validate(signatureSchema), meController.setSignature)
+router.delete('/signature', meController.deleteSignature)
 
 export default router

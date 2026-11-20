@@ -72,6 +72,8 @@ describe('contrat API ↔ front', () => {
 
   it('profil : champs de la page Paramètres et de la barre latérale', async () => {
     const me = (await api().get('/api/me').expect(200)).body
-    expect(keys(me)).toEqual(expect.arrayContaining(['id', 'email', 'firstName', 'lastName', 'address', 'zipCode', 'city']))
+    expect(keys(me)).toEqual(expect.arrayContaining(['id', 'email', 'firstName', 'lastName', 'role', 'address', 'zipCode', 'city', 'mustChangePassword', 'hasSignature']))
+    expect(me).not.toHaveProperty('signaturePath')
+    expect(me).not.toHaveProperty('passwordHash')
   })
 })

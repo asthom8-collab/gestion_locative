@@ -1,9 +1,36 @@
 import request from 'supertest'
+import { hash } from 'bcrypt'
 import { app } from '../src/app'
 import { prisma } from '../src/lib/prisma'
 import { DEV_USER_ID } from '../src/lib/devUser'
+import { SESSION_COOKIE, createSessionToken } from '../src/lib/auth'
 
-export const api = () => request(app)
+/** Cookie de session valide pour un utilisateur (sans passer par /login). */
+export const cookieFor = (userId: string, sessionVersion = 0) => `${SESSION_COOKIE}=${createSessionToken(userId, sessionVersion)}`
+
+/**
+ * Client HTTP de test. Par défaut connecté en tant qu'utilisateur de dev (admin) ;
+ * api(cookieFor(autreId)) pour un autre utilisateur, api(null) sans être connecté.
+ */
+export const api = (cookie: string | null = cookieFor(DEV_USER_ID)) => {
+  const r = request(app)
+  const auth = (t: request.Test) => (cookie ? t.set('Cookie', cookie) : t)
+  return {
+    get: (url: string) => auth(r.get(url)),
+    post: (url: string) => auth(r.post(url)),
+    put: (url: string) => auth(r.put(url)),
+    patch: (url: string) => auth(r.patch(url)),
+    delete: (url: string) => auth(r.delete(url)),
+  }
+}
+
+/** Second utilisateur (rôle USER), avec son cookie de session. */
+export async function createUser(email = 'claire@local.dev', firstName = 'Claire', lastName = 'Copro') {
+  const user = await prisma.user.create({
+    data: { email, firstName, lastName, passwordHash: await hash('motdepasse-claire', 4), role: 'USER' },
+  })
+  return { id: user.id, cookie: cookieFor(user.id) }
+}
 
 /** Vide toutes les tables puis recrée l'utilisateur de dev. */
 export async function resetDb() {

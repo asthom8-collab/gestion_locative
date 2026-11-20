@@ -1,6 +1,11 @@
 import { prisma } from '../lib/prisma'
 import { FiscalRegime, PropertyType } from '@prisma/client'
 
+const ownershipsInclude = {
+  include: { user: { select: { id: true, firstName: true, lastName: true } } },
+  orderBy: { createdAt: 'asc' },
+} as const
+
 export type CreatePropertyInput = {
   name: string
   address: string
@@ -11,25 +16,18 @@ export type CreatePropertyInput = {
   fiscalRegime: FiscalRegime
   irlQuarter: number
   userId: string
-  share?: number
 }
 
-export type UpdatePropertyInput = Partial<Omit<CreatePropertyInput, 'userId' | 'share'>>
+export type UpdatePropertyInput = Partial<Omit<CreatePropertyInput, 'userId'>>
 
 export const propertiesRepository = {
   findAll(userId: string) {
     return prisma.property.findMany({
       where: { ownerships: { some: { userId } } },
       include: {
-        ownerships: {
-          include: {
-            user: { select: { id: true, firstName: true, lastName: true } },
-          },
-        },
-        leases: {
-          where: { active: true },
-          include: { tenant: true },
-        },
+        ownerships: ownershipsInclude,
+        // Tous les baux (en cours et terminés) : historique des locataires du bien
+        leases: { include: { tenant: true }, orderBy: { startDate: 'desc' } },
       },
       orderBy: { createdAt: 'desc' },
     })
@@ -39,24 +37,35 @@ export const propertiesRepository = {
     return prisma.property.findFirst({
       where: { id, ownerships: { some: { userId } } },
       include: {
-        ownerships: {
-          include: {
-            user: { select: { id: true, firstName: true, lastName: true } },
-          },
-        },
-        leases: { include: { tenant: true } },
+        ownerships: ownershipsInclude,
+        leases: { include: { tenant: true }, orderBy: { startDate: 'desc' } },
       },
     })
   },
 
-  create({ userId, share = 1.0, ...data }: CreatePropertyInput) {
+  /** Le créateur est propriétaire à 100 % ; les copropriétaires s'ajoutent ensuite (setOwners). */
+  create({ userId, ...data }: CreatePropertyInput) {
     return prisma.property.create({
-      data: {
-        ...data,
-        ownerships: { create: { userId, share } },
-      },
+      data: { ...data, ownerships: { create: { userId, share: 1 } } },
       include: { ownerships: true },
     })
+  },
+
+  countUsers(ids: string[]) {
+    return prisma.user.count({ where: { id: { in: ids } } })
+  },
+
+  /** Remplace toute la liste des copropriétaires (quotes-parts) en une transaction. */
+  async setOwners(propertyId: string, owners: { userId: string; share: number }[]) {
+    await prisma.$transaction([
+      prisma.ownership.deleteMany({ where: { propertyId, userId: { notIn: owners.map((o) => o.userId) } } }),
+      ...owners.map((o) => prisma.ownership.upsert({
+        where: { propertyId_userId: { propertyId, userId: o.userId } },
+        create: { propertyId, userId: o.userId, share: o.share },
+        update: { share: o.share },
+      })),
+    ])
+    return prisma.ownership.findMany({ where: { propertyId }, ...ownershipsInclude })
   },
 
   update(id: string, data: UpdatePropertyInput) {

@@ -15,15 +15,20 @@ const createSchema = z.object({
   surface: z.number().positive(),
   fiscalRegime: z.nativeEnum(FiscalRegime),
   irlQuarter: z.number().int().min(1).max(4),
-  share: z.number().min(0.01).max(1).optional(),
 })
 
 const updateSchema = createSchema.partial()
+
+// Copropriétaires : liste complète, quotes-parts entre 0 et 1 dont la somme vaut 1
+const ownersSchema = z.object({
+  owners: z.array(z.object({ userId: z.string().min(1), share: z.number().gt(0).max(1) })).min(1).max(20),
+})
 
 router.get('/', propertiesController.getAll)
 router.get('/:id', propertiesController.getById)
 router.post('/', validate(createSchema), propertiesController.create)
 router.patch('/:id', validate(updateSchema), propertiesController.update)
 router.delete('/:id', propertiesController.delete)
+router.put('/:id/owners', validate(ownersSchema), propertiesController.setOwners)
 
 export default router

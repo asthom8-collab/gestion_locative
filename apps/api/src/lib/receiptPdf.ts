@@ -1,7 +1,8 @@
 import PDFDocument from 'pdfkit'
 
 export type ReceiptData = {
-  landlords: { name: string; address: string; zipCode: string; city: string }[]
+  /** signature : image PNG ou JPEG de la signature du bailleur, apposée sous son nom */
+  landlords: { name: string; address: string; zipCode: string; city: string; signature?: Buffer }[]
   tenantName: string
   propertyAddress: string
   propertyZipCode: string
@@ -82,9 +83,29 @@ export function renderReceiptPdf(data: ReceiptData): Promise<Buffer> {
     doc.moveDown(2)
 
     doc.text(`Fait à ${first.city}, le ${day(data.issuedAt)}`, x)
-    doc.moveDown(0.3)
-    doc.text(landlordNames, x)
-    doc.moveDown(3)
+    doc.moveDown(0.8)
+
+    // Une colonne par bailleur (trois par ligne au plus) : nom, puis signature ou espace pour signer
+    const perRow = Math.min(3, data.landlords.length)
+    const colWidth = width / perRow
+    const sigHeight = 55
+    for (let i = 0; i < data.landlords.length; i += perRow) {
+      const top = doc.y
+      data.landlords.slice(i, i + perRow).forEach((l, j) => {
+        const cx = x + j * colWidth
+        doc.font('Helvetica').fontSize(10).text(l.name, cx, top, { width: colWidth - 10 })
+        if (l.signature) {
+          try {
+            doc.image(l.signature, cx, top + 16, { fit: [Math.min(170, colWidth - 10), sigHeight] })
+          } catch {
+            // Image illisible : on laisse l'espace vide pour une signature manuscrite
+          }
+        }
+      })
+      doc.y = top + 16 + sigHeight + 10
+    }
+    doc.x = x
+    doc.moveDown(1)
 
     doc.fontSize(8).fillColor('#555555').text(
       'Cette quittance annule tous les reçus qui auraient pu être établis précédemment en cas de paiement ' +

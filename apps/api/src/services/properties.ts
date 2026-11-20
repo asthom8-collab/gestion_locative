@@ -21,6 +21,21 @@ export const propertiesService = {
     return propertiesRepository.update(id, data)
   },
 
+  /**
+   * Copropriétaires du bien : mêmes droits pour tous. On ne peut pas se retirer soi-même
+   * (on perdrait l'accès au bien) ; la somme des quotes-parts doit faire 100 %.
+   */
+  async setOwners(id: string, userId: string, owners: { userId: string; share: number }[]) {
+    await propertiesService.getById(id, userId)
+    const ids = owners.map((o) => o.userId)
+    if (new Set(ids).size !== ids.length) throw new AppError(400, 'Un propriétaire apparaît deux fois')
+    if (!ids.includes(userId)) throw new AppError(400, 'Vous ne pouvez pas vous retirer vous-même des propriétaires du bien')
+    const total = owners.reduce((s, o) => s + o.share, 0)
+    if (Math.abs(total - 1) > 0.0001) throw new AppError(400, `La somme des quotes-parts doit faire 100 % (actuellement ${Math.round(total * 10000) / 100} %)`)
+    if ((await propertiesRepository.countUsers(ids)) !== ids.length) throw new AppError(404, 'Utilisateur introuvable')
+    return propertiesRepository.setOwners(id, owners)
+  },
+
   async delete(id: string, userId: string) {
     const property = await propertiesService.getById(id, userId)
     const hasActiveLeases = property.leases.some((l) => l.active)
