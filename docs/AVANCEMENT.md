@@ -13,7 +13,6 @@
 
 ### Pas encore fait / points d'attention
 - **Pas d'authentification** : le modèle `User` existe, mais aucune route de login ni protection de l'API. À faire avant toute exposition sur Internet.
-- Push bloqué depuis cette machine : le jeton GitHub n'a pas le droit `workflow` (nécessaire pour pousser `.github/workflows/ci.yml`).
 - Les locataires et les baux ne sont pas filtrés par propriétaire (seuls les biens le sont via `Ownership`) : à traiter avec l'auth.
 - Racine : `package.json` contient des devDependencies inutilisées (`typescript ^7`, `@types/node ^26`), à nettoyer.
 
@@ -41,6 +40,7 @@
   - le seed créait l'admin avec un id aléatoire alors que l'API utilise un `DEV_USER_ID` fixe : les biens créés étaient orphelins. Le seed utilise maintenant `DEV_USER_ID`.
 - Port de dev Vite unifié sur 5175 (dans `vite.config.ts`). Suppression de `deploy-back.sh` / `deploy-front.sh`.
 - Vérification locale de la pile en conteneurs (via nginx :5175) : accueil, liens profonds, lecture des données seed, création/suppression d'un bien, validation 400.
+- Droit `workflow` ajouté au jeton GitHub (PAT dans `~/.git-credentials`, `gh` n'est pas installé) : commits `c3a6162` et `26f6b37` poussés sur `main`.
 - Suite : Phase 2 (loyers et quittances PDF).
 
 ### 2026-11-18
