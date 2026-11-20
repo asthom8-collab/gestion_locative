@@ -5,6 +5,7 @@ import {
   useDeleteRentPayment, useGenerateReceipt,
 } from '../hooks/useRentPayments'
 import { api } from '../api/client'
+import { useActionError } from '../hooks/useActionError'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -55,23 +56,18 @@ export function Rents() {
 
   const [paying, setPaying] = useState<RentPayment | null>(null)
   const [form, setForm] = useState({ amount: 0, date: today() })
-  const [error, setError] = useState<string | null>(null)
-
   // Les erreurs d'API (ex. adresse du bailleur manquante) s'affichent en haut de la page
-  const run = async (fn: () => Promise<unknown>) => {
-    setError(null)
-    try { await fn() } catch (e) { setError(e instanceof Error ? e.message : 'Erreur inconnue') }
-  }
+  const { error, run } = useActionError()
 
   const openPay = (p: RentPayment) => {
     setForm({ amount: p.receivedAmount ?? p.expectedAmount, date: p.paymentDate?.slice(0, 10) ?? today() })
     setPaying(p)
   }
-  const savePayment = () => run(async () => {
+  const savePayment = async () => {
     if (!paying) return
-    await recordM.mutateAsync({ id: paying.id, receivedAmount: form.amount, paymentDate: new Date(form.date).toISOString() })
-    setPaying(null)
-  })
+    const ok = await run(() => recordM.mutateAsync({ id: paying.id, receivedAmount: form.amount, paymentDate: new Date(form.date).toISOString() }))
+    if (ok) setPaying(null)
+  }
   const generate = () => run(() => generateM.mutateAsync({ year, month }))
 
   const expected = payments.reduce((s, p) => s + p.expectedAmount, 0)

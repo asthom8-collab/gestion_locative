@@ -10,7 +10,7 @@
 - **Front** : Dashboard, Biens, Locataires, Baux. Layout avec Sidebar sur desktop et BottomNav sur mobile, manifest PWA.
 - **Schéma Prisma complet** déjà en place (migration `init`), y compris pour les phases à venir : RentPayment/Receipt, BankTransaction, Charge/ChargeRegularization, IrlIndex, LmnpEntry, Document, Inventory (pièces, éléments, photos), User/Ownership (copropriété avec quote-part).
 - **Industrialisation** : dépôt git, CI GitHub Actions (compilation, tests et images Docker publiées sur GHCR), `.dockerignore`, CLAUDE.md et ce fichier.
-- **Tests automatisés** : 45 tests d'intégration API (Vitest + Supertest sur base `_test`, dont 3 tests de contrat API ↔ front) et 26 tests front (Vitest + Testing Library). `npm run verify` à la racine = build + tests des deux apps.
+- **Tests automatisés** : 47 tests d'intégration API (Vitest + Supertest sur base `_test`, dont 4 tests de contrat API ↔ front) et 37 tests front (Vitest + Testing Library). `npm run verify` à la racine = build + tests des deux apps.
 - **Phase 2** (loyers, quittances PDF, Paramètres) : livrée sur `main`.
 - **Refonte du front d'après la maquette** : en cours sur la branche `refonte-front` (voir plus bas).
 
@@ -70,12 +70,24 @@ attendront l'écran concerné.
 - [x] 1. Menu et structure : icônes `lucide-react`, barre latérale en groupes avec le profil, en-tête mobile, barre du bas avec un menu « Plus » (Locataires y est maintenant). Commit `0f5f7f7`.
 - [x] 2. Tableau de bord : indicateurs, alertes (loyers en retard, échéances à générer, fin de bail, révision annuelle), suivi mensuel branché sur `/api/rent-payments`. Validé visuellement par Thomas.
 - [x] 3. Revue de cohérence des tests front et API (voir le journal) : test de contrat ajouté côté API, règle `coversMonth` alignée sur l'API.
-- [ ] 4. Biens, Locataires, Locations.
+- [x] 4. Biens (type, régime fiscal, propriétaires, historique avec vacance), Locataires (onglets En cours / Anciens, historique des baux), Locations (liste, et nouvelle **fiche du bail** `/leases/:id` : conditions, modification, résiliation avec date, échéances et quittances du bail). Erreurs de l'API affichées partout. En attente du retour de Thomas.
 - [ ] 5. Écrans des phases suivantes, un par un, chacun avec son API, sa migration et ses tests.
 
-Laissé de côté pour l'instant : « Charger la simulation » (le seed joue ce rôle), le courrier de révision IRL (phase 4).
+Laissé de côté pour l'instant : « Charger la simulation » (le seed joue ce rôle), le courrier de révision IRL (phase 4),
+et dans la fiche du bail les blocs Documents (US-04) et Interventions (pas de modèle), le dépôt de garantie et la
+colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locataire (pièces obligatoires) attend US-04.
 
 ## Journal
+
+### 2026-11-20 (nuit)
+- Refonte, étape 4 : Biens, Locataires, Locations et fiche du bail.
+- Bugs trouvés et corrigés en route :
+  - **erreurs de l'API perdues** sur Biens, Locataires et Baux : un refus (ex. 409 « bien avec historique de baux », 400 « e-mail invalide ») ne s'affichait pas et la fenêtre se fermait comme si tout allait bien. Ajout de `useActionError` et `ErrorAlert`, testés écran par écran ;
+  - **résiliation** : l'API acceptait une date de fin antérieure au début du bail. Elle renvoie maintenant 400 (test ajouté). Côté front, la saisie passe par une fenêtre avec un champ date (avant : `prompt()` en texte libre) ;
+  - **cache** : créer ou résilier un bail ne rafraîchissait pas la liste des locataires (ni les échéances après une résiliation) ;
+  - **historique d'un bien** : un bail fini le 31/12 suivi d'un bail commencé le 01/01 aurait affiché un jour de vacance.
+- Tests : simulateur `fetch` du front enrichi (méthode HTTP, codes d'erreur), test de contrat étendu à `GET /api/leases/:id` et `GET /api/rent-payments?leaseId=`. Vérification sur la vraie API de dev des requêtes de la fiche du bail.
+- `docs/ARCHITECTURE.md` mis à jour (routes du front, gestion des erreurs, règle de résiliation, outils de test).
 
 ### 2026-11-20 (soir, suite)
 - Refonte du front, étapes 1 et 2 (menu, tableau de bord). Thomas : rien à redire sur le tableau de bord.

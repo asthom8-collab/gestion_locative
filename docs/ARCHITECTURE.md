@@ -4,7 +4,7 @@
 > On le met à jour à chaque changement de structure (nouvelle migration, nouvelle route, nouveau composant transverse).
 > L'avancement et les décisions au jour le jour sont dans [AVANCEMENT.md](AVANCEMENT.md).
 >
-> Dernière mise à jour : 2026-11-20 (phase 2 livrée, refonte du front en cours).
+> Dernière mise à jour : 2026-11-20 (phase 2 livrée ; refonte du front : menu, tableau de bord, Biens, Locataires, Locations).
 
 ## 1. Vue d'ensemble
 
@@ -255,7 +255,8 @@ Il faudra une migration au moment de faire l'écran concerné :
 
 ## 5. Règles métier implémentées
 
-- **Bail** : un seul bail actif par bien (409 sinon). La résiliation fixe `endDate` et passe `active` à `false`. Un bien
+- **Bail** : un seul bail actif par bien (409 sinon). La résiliation fixe `endDate` (qui ne peut pas précéder le début du
+  bail : 400) et passe `active` à `false`. Modifier le loyer ou les charges ne change pas les échéances déjà générées. Un bien
   ou un locataire qui a un historique de baux ne peut pas être supprimé (409).
 - **Génération des échéances** (`POST /generate`) : un bail donne une échéance pour un mois s'il en couvre au moins un jour
   (commencé avant la fin du mois, et soit sans date de fin et actif, soit avec une date de fin dans le mois ou après).
@@ -272,11 +273,13 @@ Il faudra une migration au moment de faire l'écran concerné :
 
 ```
 src/api/client.ts          appels HTTP (fetch), erreurs → Error(message de l'API)
-src/hooks/                 un fichier par ressource (TanStack Query : lecture et mutations, invalidation du cache)
+src/lib/format.ts          formatage commun (euros, dates en UTC, durées, libellés des types de bien et régimes fiscaux)
+src/hooks/                 un fichier par ressource (TanStack Query : lecture et mutations, invalidation du cache) ;
+                           useActionError : exécute une mutation et garde le message d'erreur de l'API pour l'afficher
 src/types/index.ts         types des réponses de l'API (tenus à jour avec le test de contrat, § 7)
 src/pages/                 un écran par route
 src/components/ui/         composants maison repris de la maquette (Card, Modal, Field, StatCard, Badge,
-                           PaymentStatusBadge, PropTypeIcon…)
+                           PaymentStatusBadge, PropTypeIcon, ErrorAlert…)
 src/components/layout/     Sidebar (desktop), MobileHeader et BottomNav avec menu « Plus » (mobile), nav.ts (menu)
 src/components/icons.tsx   point d'entrée unique des icônes lucide-react
 ```
@@ -284,11 +287,15 @@ src/components/icons.tsx   point d'entrée unique des icônes lucide-react
 | Route | Écran |
 |---|---|
 | `/` | Tableau de bord : indicateurs, alertes, suivi mensuel des loyers |
-| `/properties` | Biens |
-| `/tenants` | Locataires |
-| `/leases` | Locations (baux) |
+| `/properties` | Biens : type, régime fiscal, propriétaires, historique des locataires avec périodes de vacance |
+| `/tenants` | Locataires : onglets « En cours » / « Anciens et sans bail », historique des baux |
+| `/leases` | Locations (baux) : liste, création |
+| `/leases/:id` | Fiche du bail : conditions, modification, résiliation, échéances et quittances du bail |
 | `/rents?year&month` | Loyers : génération, encaissements, quittances |
 | `/settings` | Paramètres : identité et adresse du bailleur |
+
+Toutes les erreurs de l'API (400, 404, 409) s'affichent à l'écran (`ErrorAlert`) : en haut de la page pour une
+action de liste, dans la fenêtre pour un formulaire (qui reste alors ouvert).
 
 Le menu (`components/layout/nav.ts`) suit les groupes de la maquette : Tableau de bord / Patrimoine / Finances
 (puis Gestion). Les écrans des phases suivantes y seront ajoutés au fur et à mesure.
@@ -299,7 +306,7 @@ Le menu (`components/layout/nav.ts`) suit les groupes de la maquette : Tableau d
 |---|---|---|
 | Intégration API | `apps/api/tests/*.test.ts` | Chaque route via HTTP (Supertest) sur une vraie base PostgreSQL `<base>_test`, vidée avant chaque test : validation, codes d'erreur, règles métier, PDF |
 | **Contrat API ↔ front** | `apps/api/tests/frontContract.test.ts` | Les champs et relations que lisent les écrans (et que simulent les tests du front) sont bien renvoyés par l'API, avec `null` plutôt qu'absent |
-| Composants et écrans | `apps/web/src/**/*.test.tsx` | Rendu et interactions, avec `fetch` simulé (`src/test/utils.tsx`) |
+| Composants et écrans | `apps/web/src/**/*.test.tsx` | Rendu et interactions, avec `fetch` simulé (`src/test/utils.tsx` : `mockApi` par chemin ou « MÉTHODE chemin », `reply(status, corps)` pour simuler une erreur), y compris l'affichage des erreurs de l'API et le contenu des requêtes envoyées |
 | Règles partagées | `Dashboard.test.tsx` (`coversMonth`) | Cas limites identiques à ceux de l'API (début et fin de bail, bail résilié) |
 
 Les tests du front utilisent des données simulées : si l'API change de forme, ils continuent de passer. Le **test de

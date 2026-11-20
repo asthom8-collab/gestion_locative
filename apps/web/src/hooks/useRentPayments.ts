@@ -7,6 +7,11 @@ export function useRentPayments(year: number, month: number) {
   return useQuery({ queryKey: key(year, month), queryFn: () => api.rentPayments.list(year, month) })
 }
 
+/** Échéances d'un bail. La clé commence par 'rent-payments' : les mutations ci-dessous la rafraîchissent aussi. */
+export function useLeaseRentPayments(leaseId: string) {
+  return useQuery({ queryKey: ['rent-payments', 'lease', leaseId], queryFn: () => api.rentPayments.listByLease(leaseId) })
+}
+
 /** Toutes les mutations d'échéances rafraîchissent les listes de loyers. */
 function useRentMutation<V, R>(fn: (vars: V) => Promise<R>) {
   const qc = useQueryClient()

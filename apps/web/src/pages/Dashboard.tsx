@@ -92,7 +92,7 @@ function buildAlerts(leases: Lease[], current: RentPayment[], now: Date, cur: Ym
           level: days <= 30 ? 'rose' : 'amber', Icon: CalendarCheck,
           title: `Bail expirant dans ${plural(days, 'jour')}`,
           body: `${l.property?.name ?? '?'} — ${tenantName(l)} · Échéance le ${fmtDate(end)}`,
-          action: { label: 'Voir le bail', to: '/leases' },
+          action: { label: 'Voir le bail', to: `/leases/${l.id}` },
         })
     }
     // Révision annuelle du loyer, à la date anniversaire du bail (< 90 jours)
@@ -105,7 +105,7 @@ function buildAlerts(leases: Lease[], current: RentPayment[], now: Date, cur: Ym
         level: days <= 30 ? 'rose' : 'indigo', Icon: Euro,
         title: `Révision du loyer — ${l.property?.name ?? '?'}`,
         body: `${tenantName(l)} · Loyer actuel : ${eur(l.rentAmount)} HC. Date anniversaire le ${fmtDate(next)} (dans ${plural(days, 'jour')}).`,
-        action: { label: 'Voir le bail', to: '/leases' },
+        action: { label: 'Voir le bail', to: `/leases/${l.id}` },
       })
   }
   return alerts

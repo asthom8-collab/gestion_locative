@@ -49,6 +49,15 @@ describe('/api/leases', () => {
     await api().post(`/api/leases/${lease.id}/terminate`).send({ endDate: '2025-12-31T00:00:00.000Z' }).expect(409)
   })
 
+  it('refuse une date de fin antérieure au début du bail (400)', async () => {
+    const p = await createProperty()
+    const t = await createTenant()
+    const lease = await createLease(p.id, t.id, { startDate: '2025-01-01T00:00:00.000Z' })
+    const res = await api().post(`/api/leases/${lease.id}/terminate`).send({ endDate: '2024-12-31T00:00:00.000Z' }).expect(400)
+    expect(res.body.error).toMatch(/précéder le début/)
+    await api().post(`/api/leases/${lease.id}/terminate`).send({ endDate: '2025-01-01T00:00:00.000Z' }).expect(200)
+  })
+
   it('permet un nouveau bail une fois le précédent résilié', async () => {
     const p = await createProperty()
     const t = await createTenant()

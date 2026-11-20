@@ -35,8 +35,8 @@ export interface Tenant {
   firstName: string
   lastName: string
   email: string
-  phone?: string
-  iban?: string
+  phone?: string | null
+  iban?: string | null
   createdAt: string
   leases: Lease[]
 }
@@ -60,6 +60,12 @@ export interface Lease {
   tenant?: Pick<Tenant, 'id' | 'firstName' | 'lastName' | 'email'>
 }
 
+/** Réponse de GET /api/leases/:id : bien et locataire complets. */
+export interface LeaseDetail extends Omit<Lease, 'property' | 'tenant'> {
+  property: Omit<Property, 'ownerships' | 'leases'>
+  tenant: Omit<Tenant, 'leases'>
+}
+
 export interface CreatePropertyInput {
   name: string
   address: string
@@ -75,8 +81,8 @@ export interface CreateTenantInput {
   firstName: string
   lastName: string
   email: string
-  phone?: string
-  iban?: string
+  phone?: string | null
+  iban?: string | null
 }
 
 export interface CreateLeaseInput {
@@ -91,6 +97,9 @@ export interface CreateLeaseInput {
   irlQuarter?: number
   irlYear?: number
 }
+
+/** PATCH /api/leases/:id : le bien et le locataire ne changent pas. */
+export type UpdateLeaseInput = Partial<Pick<CreateLeaseInput, 'type' | 'rentAmount' | 'chargesAmount' | 'rentDayOfMonth' | 'irlReference' | 'irlQuarter' | 'irlYear'>>
 
 export type PaymentStatus = 'PENDING' | 'RECEIVED' | 'PARTIAL' | 'LATE'
 

@@ -34,7 +34,9 @@ export const api = {
   },
   leases: {
     list: () => request<import('../types').Lease[]>('/leases'),
-    get: (id: string) => request<import('../types').Lease>(`/leases/${id}`),
+    get: (id: string) => request<import('../types').LeaseDetail>(`/leases/${id}`),
+    update: (id: string, data: import('../types').UpdateLeaseInput) =>
+      request<import('../types').Lease>(`/leases/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     create: (data: import('../types').CreateLeaseInput) =>
       request<import('../types').Lease>('/leases', { method: 'POST', body: JSON.stringify(data) }),
     terminate: (id: string, endDate: string) =>
@@ -46,6 +48,9 @@ export const api = {
   rentPayments: {
     list: (year: number, month: number) =>
       request<import('../types').RentPayment[]>(`/rent-payments?year=${year}&month=${month}`),
+    /** Toutes les échéances d'un bail, de la plus récente à la plus ancienne */
+    listByLease: (leaseId: string) =>
+      request<import('../types').RentPayment[]>(`/rent-payments?leaseId=${encodeURIComponent(leaseId)}`),
     generate: (year: number, month: number) =>
       request<{ created: number; payments: import('../types').RentPayment[] }>('/rent-payments/generate', {
         method: 'POST',

@@ -4,12 +4,24 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 
-/** Remplace fetch : chaque chemin d'API (ex. "/api/properties") renvoie le corps JSON associé. */
+/** Réponse simulée avec un code HTTP précis (ex. reply(409, { error: '…' })). */
+export const reply = (status: number, body?: unknown) => ({ __reply: true as const, status, body })
+
+/**
+ * Remplace fetch. Les clés sont un chemin d'API (« /api/properties », toutes méthodes) ou
+ * « MÉTHODE chemin » (« DELETE /api/properties/p1 »), prioritaire. La valeur est le corps JSON
+ * renvoyé avec un 200, ou reply(status, corps).
+ */
 export function mockApi(routes: Record<string, unknown>) {
-  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const path = typeof input === 'string' ? input : input.toString()
-    if (!(path in routes)) return new Response(JSON.stringify({ error: `Route non simulée : ${path}` }), { status: 404 })
-    return new Response(JSON.stringify(routes[path]), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    const method = (init?.method ?? 'GET').toUpperCase()
+    const key = `${method} ${path}` in routes ? `${method} ${path}` : path
+    if (!(key in routes)) return new Response(JSON.stringify({ error: `Route non simulée : ${method} ${path}` }), { status: 404 })
+    const value = routes[key] as { __reply?: true; status: number; body?: unknown }
+    const [status, body] = value && value.__reply ? [value.status, value.body] : [200, value]
+    if (status === 204) return new Response(null, { status })
+    return new Response(JSON.stringify(body ?? null), { status, headers: { 'Content-Type': 'application/json' } })
   })
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock

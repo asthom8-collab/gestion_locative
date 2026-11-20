@@ -53,6 +53,23 @@ describe('contrat API ↔ front', () => {
     expect(keys(rp.lease)).toEqual(['id', 'property', 'rentDayOfMonth', 'tenant'])
   })
 
+  it('fiche du bail : bail, bien complet, locataire complet, et échéances filtrées par bail', async () => {
+    const p = await createProperty()
+    const t = await createTenant({ phone: '0601020304' })
+    const l = await createLease(p.id, t.id)
+    await api().post('/api/rent-payments/generate').send({ year: 2026, month: 4 }).expect(201)
+
+    const lease = (await api().get(`/api/leases/${l.id}`).expect(200)).body
+    expect(keys(lease)).toEqual(expect.arrayContaining(['id', 'type', 'startDate', 'endDate', 'rentAmount', 'chargesAmount', 'rentDayOfMonth', 'active', 'property', 'tenant']))
+    expect(lease.property).toMatchObject({ id: p.id, type: 'APARTMENT', zipCode: '69003' })
+    expect(lease.tenant).toMatchObject({ id: t.id, email: 'jean.dupont@example.com', phone: '0601020304' })
+
+    const payments = (await api().get(`/api/rent-payments?leaseId=${l.id}`).expect(200)).body
+    expect(payments).toHaveLength(1)
+    expect(payments[0]).toMatchObject({ leaseId: l.id, periodYear: 2026, periodMonth: 4 })
+    expect(payments[0].status).toBeDefined()
+  })
+
   it('profil : champs de la page Paramètres et de la barre latérale', async () => {
     const me = (await api().get('/api/me').expect(200)).body
     expect(keys(me)).toEqual(expect.arrayContaining(['id', 'email', 'firstName', 'lastName', 'address', 'zipCode', 'city']))

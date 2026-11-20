@@ -7,6 +7,7 @@ import { Dashboard } from './pages/Dashboard'
 import { Properties } from './pages/Properties'
 import { Tenants } from './pages/Tenants'
 import { Leases } from './pages/Leases'
+import { LeaseDetail } from './pages/LeaseDetail'
 import { Rents } from './pages/Rents'
 import { Settings } from './pages/Settings'
 
@@ -26,6 +27,7 @@ export default function App() {
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/tenants" element={<Tenants />} />
                 <Route path="/leases" element={<Leases />} />
+                <Route path="/leases/:id" element={<LeaseDetail />} />
                 <Route path="/rents" element={<Rents />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>

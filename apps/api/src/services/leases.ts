@@ -39,6 +39,7 @@ export const leasesService = {
   async terminate(id: string, endDate: Date) {
     const lease = await leasesService.getById(id)
     if (!lease.active) throw new AppError(409, 'Ce bail est déjà résilié')
+    if (endDate < lease.startDate) throw new AppError(400, 'La date de fin ne peut pas précéder le début du bail')
     return leasesRepository.terminate(id, endDate)
   },
 }
