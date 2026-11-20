@@ -1,6 +1,7 @@
 # Avancement du projet
 
 > Journal de bord : il sert de mémoire entre les sessions. On le met à jour à chaque étape stabilisée, l'entrée la plus récente en haut du journal.
+> La description technique (composants, API, **modèle de données**, règles métier, tests) est dans [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## État actuel (2026-11-20)
 
@@ -9,7 +10,9 @@
 - **Front** : Dashboard, Biens, Locataires, Baux. Layout avec Sidebar sur desktop et BottomNav sur mobile, manifest PWA.
 - **Schéma Prisma complet** déjà en place (migration `init`), y compris pour les phases à venir : RentPayment/Receipt, BankTransaction, Charge/ChargeRegularization, IrlIndex, LmnpEntry, Document, Inventory (pièces, éléments, photos), User/Ownership (copropriété avec quote-part).
 - **Industrialisation** : dépôt git, CI GitHub Actions (compilation, tests et images Docker publiées sur GHCR), `.dockerignore`, CLAUDE.md et ce fichier.
-- **Tests automatisés** : 24 tests d'intégration API (Vitest + Supertest sur base `_test`) et 13 tests front (Vitest + Testing Library). `npm run verify` à la racine = build + tests des deux apps.
+- **Tests automatisés** : 45 tests d'intégration API (Vitest + Supertest sur base `_test`, dont 3 tests de contrat API ↔ front) et 26 tests front (Vitest + Testing Library). `npm run verify` à la racine = build + tests des deux apps.
+- **Phase 2** (loyers, quittances PDF, Paramètres) : livrée sur `main`.
+- **Refonte du front d'après la maquette** : en cours sur la branche `refonte-front` (voir plus bas).
 
 ### Tester à distance (Thomas travaille souvent en SSH)
 - La machine est dans le réseau Tailscale de Thomas (adresse : `tailscale ip -4`, notée ici `<IP_TAILSCALE>`). On lance l'API de dev sur un autre port que le conteneur, et Vite en l'écoutant **uniquement sur l'adresse Tailscale** :
@@ -21,7 +24,6 @@
 - **Pas d'authentification** : le modèle `User` existe, mais aucune route de login ni protection de l'API. À faire avant toute exposition sur Internet.
 - Les locataires et les baux ne sont pas filtrés par propriétaire (seuls les biens le sont via `Ownership`) : à traiter avec l'auth.
 - **Docker (snap) et AppArmor** : `docker compose up -d --build` échoue sur `cannot stop container: permission denied` (AppArmor `docker-default` refuse les signaux de `snap.docker.dockerd`). Les anciens conteneurs `api`/`web` tournent encore. Il faut un `sudo` (voir le journal du 2026-11-20).
-- La BottomNav mobile n'a pas de lien vers Locataires (et ce n'est pas nouveau).
 - Racine : `package.json` contient des devDependencies inutilisées (`typescript ^7`, `@types/node ^26`), à nettoyer.
 
 ### Feuille de route (d'après le schéma)
@@ -57,7 +59,32 @@ Reste à faire :
 - [x] Interface testée par Thomas à distance (via Tailscale) : « ça fonctionne plutôt bien », mais pas encore tout vérifié. Poussée sur `main`.
 - [ ] Plus tard : envoi de la quittance par e-mail (`Receipt.sentAt`, il faut un SMTP), reçu pour un paiement partiel, échéances sur le Tableau de bord.
 
+## Refonte du front d'après la maquette : en cours (branche `refonte-front`)
+
+Référence : la maquette de Thomas (`GestionLocative.jsx`, sur le disque de la box, voir le journal du 2026-11-20 soir).
+Principe : reprendre le visuel et l'organisation des écrans, **branchés sur la vraie API**. Les notions de la maquette
+absentes du schéma (interventions, autres régimes fiscaux, colocation…) sont listées dans ARCHITECTURE.md § 4.3 et
+attendront l'écran concerné.
+
+Étapes :
+- [x] 1. Menu et structure : icônes `lucide-react`, barre latérale en groupes avec le profil, en-tête mobile, barre du bas avec un menu « Plus » (Locataires y est maintenant). Commit `0f5f7f7`.
+- [x] 2. Tableau de bord : indicateurs, alertes (loyers en retard, échéances à générer, fin de bail, révision annuelle), suivi mensuel branché sur `/api/rent-payments`. Validé visuellement par Thomas.
+- [x] 3. Revue de cohérence des tests front et API (voir le journal) : test de contrat ajouté côté API, règle `coversMonth` alignée sur l'API.
+- [ ] 4. Biens, Locataires, Locations.
+- [ ] 5. Écrans des phases suivantes, un par un, chacun avec son API, sa migration et ses tests.
+
+Laissé de côté pour l'instant : « Charger la simulation » (le seed joue ce rôle), le courrier de révision IRL (phase 4).
+
 ## Journal
+
+### 2026-11-20 (soir, suite)
+- Refonte du front, étapes 1 et 2 (menu, tableau de bord). Thomas : rien à redire sur le tableau de bord.
+- **Revue de cohérence des tests front ↔ API**. Constat : les tests du front simulent `fetch` avec des données écrites à la main, ils ne voient donc pas un changement de forme de l'API. Comparaison faite avec les vraies réponses de l'API de dev :
+  - `Lease.endDate` vaut `null` dans l'API, alors que le type front le déclarait optionnel : type corrigé (`string | null`).
+  - L'alerte « échéances à générer » ne suivait pas la règle de l'API : elle se serait affichée pour toujours sur un bail encore actif dont la date de fin est passée, et elle ignorait le dernier mois d'un bail résilié. Corrigé (`coversMonth`, même règle que `findLeasesCovering`) et couvert par 6 tests de cas limites.
+  - Ajout de `apps/api/tests/frontContract.test.ts` : il fige les champs que lisent les écrans. S'il casse, on met à jour les types et les données simulées du front.
+- Création de `docs/ARCHITECTURE.md` (dossier d'architecture technique, modèle de données en Mermaid).
+- Cache du navigateur : pas de service worker, et Vite sert les modules sans cache. Pas de risque de voir une ancienne version sur le port 5176. La seule « ancienne version » visible est celle des conteneurs sur le port 5175 (blocage AppArmor).
 
 ### 2026-11-20 (soir)
 - Test de la phase 2 par Thomas à distance, via Tailscale (voir « Tester à distance »). Les conteneurs sur 5175/3001 sont encore ceux d'avant la phase 2 (blocage AppArmor).

@@ -49,7 +49,18 @@ const ALERT_ICON_COLORS = { amber: 'text-amber-500', rose: 'text-rose-500', indi
 const tenantName = (l: Pick<Lease, 'tenant'>) => (l.tenant ? `${l.tenant.firstName} ${l.tenant.lastName}` : '—')
 const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`
 
-function buildAlerts(active: Lease[], current: RentPayment[], now: Date, cur: Ym): Alert[] {
+/** Un bail donne lieu à une échéance pour le mois s'il en couvre au moins un jour : même règle que
+ *  `findLeasesCovering` côté API (bail commencé avant la fin du mois, et soit sans date de fin et actif,
+ *  soit avec une date de fin dans le mois ou après). Les dates sont en UTC, comme dans l'API. */
+export function coversMonth(l: Pick<Lease, 'startDate' | 'endDate' | 'active'>, { year, month }: Ym) {
+  const start = Date.UTC(year, month - 1, 1)
+  const end = Date.UTC(year, month, 1) - 1
+  if (new Date(l.startDate).getTime() > end) return false
+  return l.endDate ? new Date(l.endDate).getTime() >= start : l.active
+}
+
+function buildAlerts(leases: Lease[], current: RentPayment[], now: Date, cur: Ym): Alert[] {
+  const active = leases.filter(l => l.active)
   const alerts: Alert[] = []
   const rentsLink = `/rents?year=${cur.year}&month=${cur.month}`
 
@@ -62,9 +73,8 @@ function buildAlerts(active: Lease[], current: RentPayment[], now: Date, cur: Ym
       action: { label: 'Voir les loyers', to: rentsLink },
     })
 
-  // Échéances du mois pas encore générées
-  const endOfMonth = new Date(cur.year, cur.month, 0)
-  const due = active.filter(l => new Date(l.startDate) <= endOfMonth && !current.some(p => p.leaseId === l.id))
+  // Échéances du mois pas encore générées (même règle que l'API, voir coversMonth)
+  const due = leases.filter(l => coversMonth(l, cur) && !current.some(p => p.leaseId === l.id))
   if (due.length > 0)
     alerts.push({
       level: 'amber', Icon: Receipt, title: `Échéances de ${ymLabel(cur).toLowerCase()} à générer`,
@@ -116,7 +126,7 @@ export function Dashboard() {
   const occupied = properties.filter(p => active.some(l => l.propertyId === p.id)).length
   const income = active.reduce((s, l) => s + l.rentAmount + l.chargesAmount, 0)
   const paid = current.filter(p => p.status === 'RECEIVED').length
-  const alerts = buildAlerts(active, current, now, cur)
+  const alerts = buildAlerts(leases, current, now, cur)
   const propType = (id: string) => properties.find(p => p.id === id)?.type
   const months = selectableMonths(now)
 

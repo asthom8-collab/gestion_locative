@@ -4,6 +4,7 @@ Application web de gestion locative pour des biens détenus en propre (biens, lo
 Dépôt : https://github.com/asthom8-collab/gestion_locative (branche `main`).
 
 **L'avancement, les décisions et la suite du projet sont dans @docs/AVANCEMENT.md : à lire en début de session et à mettre à jour en fin de session.**
+Le dossier d'architecture technique (API, modèle de données, règles métier, tests) est dans `docs/ARCHITECTURE.md` : à mettre à jour à chaque changement de structure (migration, route, composant transverse).
 
 ## Mode de fonctionnement (convenu le 2026-11-18)
 

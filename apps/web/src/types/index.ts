@@ -47,7 +47,7 @@ export interface Lease {
   tenantId: string
   type: LeaseType
   startDate: string
-  endDate?: string
+  endDate?: string | null
   rentAmount: number
   chargesAmount: number
   rentDayOfMonth: number

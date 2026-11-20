@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
-import { Dashboard } from './Dashboard'
+import { Dashboard, coversMonth } from './Dashboard'
 import { mockApi, renderWithProviders, property, lease } from '../test/utils'
 
 const now = new Date()
@@ -52,4 +52,15 @@ describe('Tableau de bord', () => {
     expect(row).toHaveTextContent('En retard')
     expect(row).toHaveTextContent('À établir')
   })
+})
+
+describe('coversMonth (même règle que la génération des échéances côté API)', () => {
+  const nov = { year: 2026, month: 11 }
+  const l = (startDate: string, endDate: string | null, active = true) => ({ startDate, endDate, active })
+  it('bail en cours sans date de fin', () => expect(coversMonth(l('2025-01-01T00:00:00.000Z', null), nov)).toBe(true))
+  it('bail qui commence le dernier jour du mois', () => expect(coversMonth(l('2026-11-30T00:00:00.000Z', null), nov)).toBe(true))
+  it('bail qui commence le mois suivant', () => expect(coversMonth(l('2026-12-01T00:00:00.000Z', null), nov)).toBe(false))
+  it('bail résilié dans le mois : dernier mois proratisé', () => expect(coversMonth(l('2025-01-01T00:00:00.000Z', '2026-11-10T00:00:00.000Z', false), nov)).toBe(true))
+  it('bail encore actif mais dont la fin est passée', () => expect(coversMonth(l('2025-01-01T00:00:00.000Z', '2026-10-31T00:00:00.000Z'), nov)).toBe(false))
+  it('bail inactif sans date de fin', () => expect(coversMonth(l('2025-01-01T00:00:00.000Z', null, false), nov)).toBe(false))
 })
