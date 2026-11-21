@@ -76,6 +76,26 @@ ils ont besoin de `SESSION_SECRET` dans le `.env` de la racine (déjà ajouté s
 
 > La numérotation des phases et des US vient des commentaires du schéma. À confirmer ou compléter avec Thomas (l'historique de la conversation précédente n'est pas disponible).
 
+## Phase 4 (charges et IRL) : en cours (branche `phase4-charges-irl`)
+
+Choix retenus (Claude, à valider par Thomas) :
+- **IRL** : indices saisis à la main (table `IrlIndex`, commune à tous ; pas de valeurs inventées). Révision une fois par an,
+  à l'anniversaire du bail (ou de la dernière révision) : nouveau loyer = loyer × IRL du même trimestre (le plus récent) / IRL de référence,
+  arrondi au centime ; on peut appliquer moins, jamais plus. Historique dans `RentRevision` ; seule la dernière s'annule.
+  Une révision en cours de mois est proratisée au jour (`rentAt` dans `lib/period.ts`). Les échéances non payées concernées sont recalculées.
+  Avis de révision en PDF (signatures des bailleurs) + lien « messagerie » comme dans la maquette.
+- **Charges** : `Charge` = charges récupérables réelles d'un bien pour une année. Régularisation d'un bail pour une année :
+  charges réelles × jours occupés / jours de l'année, moins les provisions appelées (échéances générées de l'année) ;
+  mois sans échéance signalés. Une régularisation par bail et par année (`@@unique`), décompte en PDF.
+- Front prévu : carte « Révision du loyer » et carte « Régularisation des charges » dans la fiche du bail ; page **Charges**
+  (Finances) pour saisir les charges par bien et par année ; section **Indices IRL** dans Paramètres.
+
+Avancement :
+- [x] Migration `20261121150000_charges_irl` (appliquée sur la base de dev) ; `lib/period.ts` : `rentAt`, `occupiedDaysInYear`, `addOneYear`.
+- [x] `findLeasesCovering` inclut les révisions (génération des échéances au bon loyer).
+- [ ] API : routes `/api/irl`, `/api/charges`, `/api/leases/:id/revisions[/preview|/:rid/letter]`, `/api/leases/:id/regularizations[/preview|/:rid/statement]` + tests.
+- [ ] Front (cartes, page Charges, Paramètres) + tests ; ARCHITECTURE.md ; `npm run verify` ; test par Thomas.
+
 ## Phase 2 (loyers et quittances) : livrée sur `main` (2026-11-20)
 
 Décisions (validées par Thomas le 2026-11-20) :

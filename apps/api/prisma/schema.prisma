@@ -141,6 +141,7 @@ model Lease {
 
   rentPayments          RentPayment[]
   chargeRegularizations ChargeRegularization[]
+  rentRevisions         RentRevision[]
   documents             Document[]
   inventories           Inventory[]
 }
@@ -234,17 +235,42 @@ model Charge {
   updatedAt  DateTime @updatedAt
 }
 
+// Régularisation annuelle des charges d'un bail : charges réelles du bien au prorata de l'occupation,
+// moins les provisions appelées sur l'année (balance > 0 : à réclamer au locataire, < 0 : à lui rembourser)
 model ChargeRegularization {
-  id           String   @id @default(cuid())
-  lease        Lease    @relation(fields: [leaseId], references: [id])
+  id           String    @id @default(cuid())
+  lease        Lease     @relation(fields: [leaseId], references: [id])
   leaseId      String
   year         Int
+  occupiedDays Int
+  daysInYear   Int
   totalCharged Float
   totalReal    Float
   balance      Float
   filePath     String?
   sentAt       DateTime?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
+
+  @@unique([leaseId, year])
+}
+
+// Révision annuelle du loyer selon l'IRL (art. 17-1 de la loi du 6 juillet 1989).
+// Les valeurs « previous* » permettent d'annuler la dernière révision et de calculer le loyer d'une période passée.
+model RentRevision {
+  id                 String   @id @default(cuid())
+  lease              Lease    @relation(fields: [leaseId], references: [id])
+  leaseId            String
+  effectiveDate      DateTime
+  previousRent       Float
+  newRent            Float
+  previousIrlValue   Float
+  previousIrlQuarter Int
+  previousIrlYear    Int
+  newIrlValue        Float
+  newIrlYear         Int
+  createdAt          DateTime @default(now())
+
+  @@index([leaseId, effectiveDate])
 }
 
 // ─────────────────────────────────────────

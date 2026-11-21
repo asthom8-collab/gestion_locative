@@ -55,6 +55,7 @@ export const rentPaymentsRepository = {
         startDate: { lte: new Date(end.getTime() + 86_399_999) },
         OR: [{ endDate: null, active: true }, { endDate: { gte: start } }],
       },
+      include: { rentRevisions: { select: { effectiveDate: true, previousRent: true } } },
     })
   },
 
