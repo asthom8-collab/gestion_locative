@@ -3,45 +3,29 @@
 > Journal de bord : il sert de mémoire entre les sessions. On le met à jour à chaque étape stabilisée, l'entrée la plus récente en haut du journal.
 > La description technique (composants, API, **modèle de données**, règles métier, tests) est dans [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## ▶ Reprise (à lire en premier) — état au 2026-11-21, fin de session
+## ▶ Reprise (à lire en premier) — état au 2026-11-21
 
 ### Où en est le code
-| Branche | Commit | Contenu | Poussée ? |
-|---|---|---|---|
-| `main` | `60f7cf3` | Phase 2 (loyers, quittances PDF, Paramètres). Historique réécrit (voir le journal du 20/11 nuit) | oui, c'est `origin/main` |
-| `refonte-front` | `62a54b8` | Refonte du front d'après la maquette : menu, tableau de bord, Biens, Locataires, Locations, fiche du bail | **non, locale** |
-| `multi-proprietaires` | `cc3a1b6` | Part de `refonte-front` et ajoute : connexion, données par propriétaire, copropriété, signatures | **non, locale** (branche courante) |
-| `sauvegarde/*` | — | Anciennes branches d'avant la réécriture, avec des détails privés | **ne jamais pousser** ; à supprimer quand Thomas est d'accord |
-
-`multi-proprietaires` contient tout (refonte + multipropriétaires) : c'est elle qu'il faut tester puis fusionner dans `main`.
-`npm run verify` passe sur `multi-proprietaires` : 70 tests API, 48 tests front.
-
-### Ce que Thomas doit tester (rien n'a encore été validé à la main, sauf le tableau de bord)
-1. **Connexion** : `admin@local.dev` / `changeme` (compte du seed). Vérifier l'erreur sur un mauvais mot de passe, puis la déconnexion (icône en bas de la barre latérale, ou menu « Plus » sur mobile).
-2. **Paramètres** : ajouter une image de signature (PNG ou JPEG, 300 Ko au plus) ; changer de mot de passe ; section **Comptes** (administrateur) : créer un compte pour un copropriétaire, noter le mot de passe provisoire affiché.
-3. **Copropriété** : sur la carte d'un bien, bouton « Propriétaires » (icône personnes) : ajouter le nouveau compte, régler les quotes-parts (total 100 %, bouton « Parts égales »).
-4. **Second compte** (navigateur privé) : se connecter avec le compte créé ; changement obligatoire du mot de passe provisoire ; il ne doit voir **que** le bien partagé (avec son bail, son locataire, ses loyers).
-5. **Quittance en copropriété** : les deux propriétaires renseignent leur adresse (Paramètres) et leur signature, puis Loyers → encaisser → établir la quittance : les deux noms et les deux signatures doivent apparaître.
-6. **Refonte** (pas encore testée par Thomas) : Biens (historique dépliable avec les périodes de vacance), Locataires (onglets En cours / Anciens et sans bail), Locations, fiche du bail (modifier le loyer, résilier avec une date ; une date avant le début du bail doit être refusée).
+- `main` contient la phase 2, la refonte du front et le multipropriétaires (validés à la main par Thomas le 2026-11-21).
+- Branches `sauvegarde/*` (locales) : anciennes branches d'avant la réécriture, avec des détails privés. **Ne jamais pousser** ; à supprimer quand Thomas est d'accord.
+- `npm run verify` passe : 70 tests API, 48 tests front.
 
 ### Comment relancer l'environnement de test à distance
-Les serveurs lancés par Claude s'arrêtent avec la session. Pour les relancer (Thomas en SSH, accès par Tailscale) :
+Thomas est souvent en SSH, accès par Tailscale :
 ```bash
 docker compose up -d db                                   # base de dev (port 5433)
 cd apps/api && PORT=3002 npm run dev                      # API de dev (code de la branche courante)
 cd apps/web && API_URL=http://localhost:3002 npx vite --port 5176 --strictPort --host <IP_TAILSCALE>
 ```
-Puis ouvrir `http://<IP_TAILSCALE>:5176` (adresse : `tailscale ip -4`). La base de dev a déjà la migration
-`20261121090000_multi_proprietaires` ; sur une autre base : `npx prisma migrate deploy` dans `apps/api`.
+Puis ouvrir `http://<IP_TAILSCALE>:5176` (adresse : `tailscale ip -4`). Compte du seed : `admin@local.dev` / `changeme`.
+Sur une autre base : `npx prisma migrate deploy` dans `apps/api`.
 Les conteneurs (port 5175) sont encore en version d'avant la phase 2 (blocage AppArmor, il faut `sudo snap restart docker`) ;
-ils auront besoin de `SESSION_SECRET` dans le `.env` de la racine (déjà ajouté sur cette machine).
+ils ont besoin de `SESSION_SECRET` dans le `.env` de la racine (déjà ajouté sur cette machine).
 
 ### Prochaines étapes, dans l'ordre
-1. Retours de Thomas sur les tests ci-dessus, corrections.
-2. Fusionner `multi-proprietaires` dans `main` (fast-forward : elle part de `main`), pousser ; la CI publie les images.
-3. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, puis `docker compose up -d --build`), avec `SESSION_SECRET`.
-4. Supprimer les branches `sauvegarde/*` (accord de Thomas).
-5. Suite de la feuille de route : phase 3 (rapprochement bancaire) ou phase 4 (charges, IRL), en gardant en tête la
+1. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, puis `docker compose up -d --build`), avec `SESSION_SECRET`.
+2. Supprimer les branches `sauvegarde/*` (accord de Thomas).
+3. Suite de la feuille de route : phase 3 (rapprochement bancaire) ou phase 4 (charges, IRL), en gardant en tête la
    répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1). Écrans de la maquette pas encore faits :
    Paiements, Synchro bancaire, Impôts, Interventions, Documents, États des lieux, dossier locataire.
 
@@ -65,8 +49,8 @@ ils auront besoin de `SESSION_SECRET` dans le `.env` de la racine (déjà ajout�
 - **Industrialisation** : dépôt git, CI GitHub Actions (compilation, tests et images Docker publiées sur GHCR), `.dockerignore`, CLAUDE.md et ce fichier.
 - **Tests automatisés** : 70 tests d'intégration API (Vitest + Supertest sur base `_test`, dont contrat API ↔ front, droits et sessions) et 48 tests front (Vitest + Testing Library). `npm run verify` à la racine = build + tests des deux apps.
 - **Phase 2** (loyers, quittances PDF, Paramètres) : livrée sur `main`.
-- **Refonte du front d'après la maquette** : étapes 1 à 4 faites sur la branche `refonte-front` (voir plus bas).
-- **Multipropriétaires** : connexion, données filtrées par propriétaire, copropriété, signatures ; branche `multi-proprietaires` (partie de `refonte-front`), voir plus bas.
+- **Refonte du front d'après la maquette** : étapes 1 à 4, sur `main` (voir plus bas).
+- **Multipropriétaires** : connexion, données filtrées par propriétaire, copropriété, signatures , sur `main`, voir plus bas.
 
 ### Tester à distance (Thomas travaille souvent en SSH)
 - La machine est dans le réseau Tailscale de Thomas (adresse : `tailscale ip -4`, notée ici `<IP_TAILSCALE>`). On lance l'API de dev sur un autre port que le conteneur, et Vite en l'écoutant **uniquement sur l'adresse Tailscale** :
@@ -113,7 +97,7 @@ Reste à faire :
 - [x] Interface testée par Thomas à distance (via Tailscale) : « ça fonctionne plutôt bien », mais pas encore tout vérifié. Poussée sur `main`.
 - [ ] Plus tard : envoi de la quittance par e-mail (`Receipt.sentAt`, il faut un SMTP), reçu pour un paiement partiel, échéances sur le Tableau de bord.
 
-## Multipropriétaires : développé (branche `multi-proprietaires`), en attente de test par Thomas
+## Multipropriétaires : livré sur `main` (2026-11-21)
 
 Décisions (Thomas, 2026-11-21) : anticiper tout de suite le cas de plusieurs propriétaires par bien, avec un compte par
 personne ; tous les copropriétaires ont les mêmes droits ; signatures des quittances en simple image, sans aller plus loin.
@@ -136,7 +120,7 @@ Fait :
 À anticiper (ARCHITECTURE.md § 5.1) : répartition des revenus et charges par quote-part pour les impôts (et historique
 des quotes-parts par année ?), régime fiscal par copropriétaire si besoin.
 
-## Refonte du front d'après la maquette : en cours (branche `refonte-front`)
+## Refonte du front d'après la maquette : étapes 1 à 4 livrées sur `main`
 
 Référence : la maquette de Thomas (`GestionLocative.jsx`, sur le disque de la box, voir le journal du 2026-11-20 soir).
 Principe : reprendre le visuel et l'organisation des écrans, **branchés sur la vraie API**. Les notions de la maquette
@@ -147,7 +131,7 @@ attendront l'écran concerné.
 - [x] 1. Menu et structure : icônes `lucide-react`, barre latérale en groupes avec le profil, en-tête mobile, barre du bas avec un menu « Plus » (Locataires y est maintenant). Commit `0f5f7f7`.
 - [x] 2. Tableau de bord : indicateurs, alertes (loyers en retard, échéances à générer, fin de bail, révision annuelle), suivi mensuel branché sur `/api/rent-payments`. Validé visuellement par Thomas.
 - [x] 3. Revue de cohérence des tests front et API (voir le journal) : test de contrat ajouté côté API, règle `coversMonth` alignée sur l'API.
-- [x] 4. Biens (type, régime fiscal, propriétaires, historique avec vacance), Locataires (onglets En cours / Anciens, historique des baux), Locations (liste, et nouvelle **fiche du bail** `/leases/:id` : conditions, modification, résiliation avec date, échéances et quittances du bail). Erreurs de l'API affichées partout. En attente du retour de Thomas.
+- [x] 4. Biens (type, régime fiscal, propriétaires, historique avec vacance), Locataires (onglets En cours / Anciens, historique des baux), Locations (liste, et nouvelle **fiche du bail** `/leases/:id` : conditions, modification, résiliation avec date, échéances et quittances du bail). Erreurs de l'API affichées partout. Validé par Thomas.
 - [ ] 5. Écrans des phases suivantes, un par un, chacun avec son API, sa migration et ses tests.
 
 Laissé de côté pour l'instant : « Charger la simulation » (le seed joue ce rôle), le courrier de révision IRL (phase 4),
@@ -157,6 +141,7 @@ colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locata
 ## Journal
 
 ### 2026-11-21
+- Tests à la main par Thomas (connexion, Paramètres, copropriété, second compte, quittance à deux signatures, écrans de la refonte) : « tout fonctionne super bien ». `multi-proprietaires` fusionnée dans `main` (fast-forward) et poussée.
 - Multipropriétaires développé (voir la section dédiée). 70 tests API, 48 tests front.
 - Bug trouvé pendant le développement du front : une boucle infinie de requêtes quand la session est absente (la 401 du profil relançait le profil). Corrigé et couvert par les tests de l'écran de connexion.
 

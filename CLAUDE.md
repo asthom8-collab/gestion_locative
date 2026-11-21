@@ -60,5 +60,5 @@ npm run verify
 - Code, commits et docs en français, identifiants de code en anglais.
 - Toute modification du schéma passe par une migration Prisma (`prisma migrate dev --name ...`), jamais par une modification à la main de la base.
 - Ne jamais committer `.env`, `storage/` (documents et PDF des locataires) ni de données personnelles réelles.
-- En attendant l'auth, l'utilisateur courant est `DEV_USER_ID` (`apps/api/src/lib/devUser.ts`), créé par le seed et par les tests.
+- Authentification par cookie de session signé (`SESSION_SECRET`), voir ARCHITECTURE.md § 3.3. `DEV_USER_ID` (`apps/api/src/lib/devUser.ts`) ne sert plus qu'au seed (`admin@local.dev` / `changeme`) et aux tests.
 - Le port 5175 sert au Vite de dev **et** au conteneur `web` : on lance l'un ou l'autre.
