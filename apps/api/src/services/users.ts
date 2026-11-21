@@ -8,9 +8,9 @@ const BCRYPT_ROUNDS = 12
 // Hash d'un mot de passe quelconque : la vérification d'un e-mail inconnu prend le même temps
 const DUMMY_HASH = '$2b$12$VkBv5WJs4PV2ZYkUywOrs.izQ.ZNnx4Wu.q8RFoSDGFaRWo/BDGRq'
 
-/** Le profil ne montre pas le chemin du fichier de signature, seulement s'il y en a une. */
-function present<T extends { signaturePath: string | null }>({ signaturePath, ...u }: T) {
-  return { ...u, hasSignature: signaturePath !== null }
+/** Le profil ne montre ni le chemin du fichier de signature ni la clé SMS, seulement s'ils existent. */
+function present<T extends { signaturePath: string | null; freeMobileKey: string | null }>({ signaturePath, freeMobileKey, ...u }: T) {
+  return { ...u, hasSignature: signaturePath !== null, hasFreeMobileKey: freeMobileKey !== null }
 }
 
 const SIGNATURE_TYPES: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg' }

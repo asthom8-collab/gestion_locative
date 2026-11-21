@@ -2,6 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { Building2, UserCircle2, LogOut } from '../icons'
 import { useMe, useLogout } from '../../hooks/useMe'
 import { NAV_GROUPS, initials } from './nav'
+import { NotificationBell } from '../NotificationBell'
 
 export function Sidebar() {
   const { data: me } = useMe()
@@ -17,6 +18,7 @@ export function Sidebar() {
           <div className="text-white font-semibold tracking-tight leading-none">Gestion Locative</div>
           <div className="text-[11px] text-slate-500 mt-0.5">Espace bailleur</div>
         </div>
+        <NotificationBell className="ml-auto" />
       </div>
       <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-5">
         {NAV_GROUPS.map((group, gi) => (

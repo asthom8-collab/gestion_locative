@@ -12,6 +12,11 @@ export const publicUserSelect = {
   city: true,
   mustChangePassword: true,
   signaturePath: true,
+  notifyDaysBefore: true,
+  notifyEmail: true,
+  ntfyTopic: true,
+  freeMobileUser: true,
+  freeMobileKey: true,
 } as const
 
 /** Ce que voit un autre utilisateur (pour choisir un copropriétaire). */
@@ -23,6 +28,11 @@ export type UpdateProfileInput = {
   address?: string | null
   zipCode?: string | null
   city?: string | null
+  notifyDaysBefore?: number
+  notifyEmail?: boolean
+  ntfyTopic?: string | null
+  freeMobileUser?: string | null
+  freeMobileKey?: string | null
 }
 
 export type CreateUserInput = { email: string; firstName: string; lastName: string; passwordHash: string; role: Role }

@@ -7,7 +7,7 @@
 
 ### Où en est le code
 - `main` contient la phase 2, la refonte du front, le multipropriétaires et la phase 4 (validés à la main par Thomas le 2026-11-21).
-- `npm run verify` passe : 91 tests API, 60 tests front.
+- `npm run verify` passe : 102 tests API, 67 tests front (branche `phase4b-notifications`).
 
 ### Comment relancer l'environnement de test à distance
 Thomas est souvent en SSH, accès par Tailscale :
@@ -74,6 +74,30 @@ ils ont besoin de `SESSION_SECRET` dans le `.env` de la racine (déjà ajouté s
 | US-22 à 25 | États des lieux d'entrée et de sortie (photos, signatures, PDF) | Inventory* |
 
 > La numérotation des phases et des US vient des commentaires du schéma. À confirmer ou compléter avec Thomas (l'historique de la conversation précédente n'est pas disponible).
+
+## Phase 4 bis (notifications, charges par trimestre, quotes-parts datées) : en cours (branche `phase4b-notifications`)
+
+Demandes de Thomas (2026-11-21) : notifier les propriétaires, selon leurs quotes-parts, avant la date anniversaire des baux
+pour préparer la communication au locataire ; détailler les charges par trimestre pour le prorata lors d'un changement de
+propriétaire. Décisions de Thomas : canaux **application + e-mail + téléphone** ; délai **réglable, 60 jours par défaut** ;
+**quotes-parts datées**.
+
+Choix de Claude (à valider) :
+- Téléphone : **ntfy** (application gratuite, notifications push) et **SMS Free Mobile** (option gratuite des abonnés), au choix de chacun dans Paramètres.
+- E-mail : SMTP configuré dans le `.env` de l'API (`SMTP_HOST`…, ex. Gmail + mot de passe d'application) ; sans SMTP, pas d'e-mail (l'essai le dit).
+- Rappel : un par propriétaire et par anniversaire, envoyé aux propriétaires **à la date anniversaire**, tâche au démarrage puis toutes les 6 h.
+- Un ancien propriétaire garde l'accès au bien (historique) ; une seule période de détention par propriétaire et par bien.
+
+Avancement :
+- [x] Migration `20261121200000_notifications_quotes_parts` (appliquée sur la base de dev).
+- [x] API : quotes-parts datées (`checkTimeline`), charges par trimestre (régularisation au prorata de chaque période), `GET /api/charges/allocation`,
+  notifications (`/api/notifications`, préférences dans `/api/me`, essai), rappels de révision. Tests : 102 API.
+- [x] Front : cloche et page Notifications, section Notifications dans Paramètres, dates dans la fenêtre Propriétaires,
+  trimestre et répartition entre propriétaires sur la page Charges, détail par période dans la régularisation. Tests : 67 front.
+- [ ] **Test par Thomas** : Paramètres → Notifications (sujet ntfy et/ou SMS, « Envoyer un essai ») ; un bail dont l'anniversaire tombe
+  dans les 60 jours (rappel au redémarrage de l'API ou dans les 6 h) ; fenêtre Propriétaires avec des dates ; charges par trimestre.
+- [ ] Pour l'e-mail : choisir un SMTP (ex. Gmail + mot de passe d'application) et le mettre dans `apps/api/.env` (jamais dans le dépôt).
+- [ ] Puis fusion dans `main` et push.
 
 ## Phase 4 (charges et IRL) : livrée sur `main` (2026-11-21)
 

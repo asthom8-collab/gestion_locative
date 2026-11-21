@@ -56,13 +56,13 @@ export const propertiesRepository = {
   },
 
   /** Remplace toute la liste des copropriétaires (quotes-parts) en une transaction. */
-  async setOwners(propertyId: string, owners: { userId: string; share: number }[]) {
+  async setOwners(propertyId: string, owners: { userId: string; share: number; startDate: Date | null; endDate: Date | null }[]) {
     await prisma.$transaction([
       prisma.ownership.deleteMany({ where: { propertyId, userId: { notIn: owners.map((o) => o.userId) } } }),
       ...owners.map((o) => prisma.ownership.upsert({
         where: { propertyId_userId: { propertyId, userId: o.userId } },
-        create: { propertyId, userId: o.userId, share: o.share },
-        update: { share: o.share },
+        create: { propertyId, ...o },
+        update: { share: o.share, startDate: o.startDate, endDate: o.endDate },
       })),
     ])
     return prisma.ownership.findMany({ where: { propertyId }, ...ownershipsInclude })

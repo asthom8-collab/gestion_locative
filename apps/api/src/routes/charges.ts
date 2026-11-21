@@ -5,16 +5,24 @@ import { handle } from '../controllers/handle'
 import { currentUser } from '../middlewares/auth'
 import { chargesService } from '../services/charges'
 
-// Charges récupérables réelles d'un bien, par année (base de la régularisation)
+// Charges récupérables réelles d'un bien, par année ou par trimestre (base de la régularisation)
 const router = Router()
 
 const year = z.number().int().min(2000).max(2100)
-const createSchema = z.object({ propertyId: z.string().min(1), year, label: z.string().trim().min(1).max(120), amount: z.number().positive() })
+// quarter : trimestre (1 à 4), ou null / absent pour une charge de l'année entière
+const createSchema = z.object({
+  propertyId: z.string().min(1), year, quarter: z.number().int().min(1).max(4).nullable().optional(),
+  label: z.string().trim().min(1).max(120), amount: z.number().positive(),
+})
 const updateSchema = createSchema.omit({ propertyId: true }).partial()
 const listSchema = z.object({ year: z.coerce.number().int().min(2000).max(2100).optional(), propertyId: z.string().optional() })
 
 router.get('/', validateQuery(listSchema), handle(async (req, res) => {
   res.json(await chargesService.list(currentUser(req).id, req.query as { year?: number; propertyId?: string }))
+}))
+// Répartition des charges d'une année entre les propriétaires successifs (quotes-parts datées)
+router.get('/allocation', validateQuery(z.object({ year: z.coerce.number().int().min(2000).max(2100) })), handle(async (req, res) => {
+  res.json(await chargesService.allocation(currentUser(req).id, Number(req.query.year)))
 }))
 router.post('/', validate(createSchema), handle(async (req, res) => {
   res.status(201).json(await chargesService.create(currentUser(req).id, req.body))

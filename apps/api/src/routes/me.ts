@@ -15,6 +15,13 @@ const updateSchema = z.object({
   address: optionalText,
   zipCode: optionalText,
   city: optionalText,
+  // Notifications (délai avant l'anniversaire des baux, canaux)
+  notifyDaysBefore: z.number().int().min(1).max(180).optional(),
+  notifyEmail: z.boolean().optional(),
+  ntfyTopic: z.string().trim().max(200).regex(/^(|[A-Za-z0-9_-]+|https:\/\/\S+)$/, 'Sujet ntfy : lettres, chiffres, - et _, ou adresse https complète')
+    .transform((s) => (s === '' ? null : s)).nullable().optional(),
+  freeMobileUser: optionalText,
+  freeMobileKey: optionalText,
 })
 
 const passwordChangeSchema = z.object({ currentPassword: z.string().min(1).max(200), newPassword: passwordSchema })

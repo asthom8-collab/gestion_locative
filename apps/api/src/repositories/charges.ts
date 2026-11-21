@@ -4,20 +4,20 @@ import { ownedLease } from './tenants'
 
 const owned = (userId: string) => ({ property: { ownerships: { some: { userId } } } })
 
-export type ChargeInput = { propertyId: string; year: number; label: string; amount: number }
+export type ChargeInput = { propertyId: string; year: number; quarter?: number | null; label: string; amount: number }
 
 export const chargesRepository = {
   findMany(userId: string, filter: { year?: number; propertyId?: string }) {
     return prisma.charge.findMany({
       where: { ...owned(userId), year: filter.year, propertyId: filter.propertyId },
-      orderBy: [{ year: 'desc' }, { createdAt: 'asc' }],
+      orderBy: [{ year: 'desc' }, { quarter: { sort: 'asc', nulls: 'first' } }, { createdAt: 'asc' }],
     })
   },
   findById(id: string, userId: string) {
     return prisma.charge.findFirst({ where: { id, ...owned(userId) } })
   },
   forPropertyYear(propertyId: string, year: number) {
-    return prisma.charge.findMany({ where: { propertyId, year }, orderBy: { createdAt: 'asc' } })
+    return prisma.charge.findMany({ where: { propertyId, year }, orderBy: [{ quarter: { sort: 'asc', nulls: 'first' } }, { createdAt: 'asc' }] })
   },
   create(data: ChargeInput) { return prisma.charge.create({ data }) },
   update(id: string, data: Partial<Omit<ChargeInput, 'propertyId'>>) { return prisma.charge.update({ where: { id }, data }) },

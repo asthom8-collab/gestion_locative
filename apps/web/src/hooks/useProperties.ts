@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
-import type { CreatePropertyInput } from '../types'
+import type { CreatePropertyInput, OwnerInput } from '../types'
 
 export function useProperties() {
   return useQuery({ queryKey: ['properties'], queryFn: api.properties.list })
@@ -37,7 +37,7 @@ export function useDeleteProperty() {
 export function useSetOwners() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, owners }: { id: string; owners: { userId: string; share: number }[] }) => api.properties.setOwners(id, owners),
+    mutationFn: ({ id, owners }: { id: string; owners: OwnerInput[] }) => api.properties.setOwners(id, owners),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['properties'] }),
   })
 }

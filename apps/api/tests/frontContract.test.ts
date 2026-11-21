@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import { api, resetDb, prisma, createProperty, createTenant, createLease } from './helpers'
+import { DEV_USER_ID } from '../src/lib/devUser'
+import { notificationsService } from '../src/services/notifications'
 
 beforeEach(resetDb)
 afterAll(() => prisma.$disconnect())
@@ -72,7 +74,9 @@ describe('contrat API ↔ front', () => {
 
   it('profil : champs de la page Paramètres et de la barre latérale', async () => {
     const me = (await api().get('/api/me').expect(200)).body
-    expect(keys(me)).toEqual(expect.arrayContaining(['id', 'email', 'firstName', 'lastName', 'role', 'address', 'zipCode', 'city', 'mustChangePassword', 'hasSignature']))
+    expect(keys(me)).toEqual(expect.arrayContaining(['id', 'email', 'firstName', 'lastName', 'role', 'address', 'zipCode', 'city', 'mustChangePassword', 'hasSignature',
+      'notifyDaysBefore', 'notifyEmail', 'ntfyTopic', 'freeMobileUser', 'hasFreeMobileKey']))
+    expect(me).not.toHaveProperty('freeMobileKey')
     expect(me).not.toHaveProperty('signaturePath')
     expect(me).not.toHaveProperty('passwordHash')
   })
@@ -94,12 +98,27 @@ describe('contrat API ↔ front', () => {
     expect(listed.rentRevisions).toEqual([{ effectiveDate: '2026-01-15T00:00:00.000Z' }])
 
     const charge = (await api().post('/api/charges').send({ propertyId: p.id, year: 2025, label: 'Eau', amount: 300 }).expect(201)).body
-    expect(keys(charge)).toEqual(expect.arrayContaining(['id', 'propertyId', 'year', 'label', 'amount']))
+    expect(keys(charge)).toEqual(expect.arrayContaining(['id', 'propertyId', 'year', 'quarter', 'label', 'amount']))
     const reg = (await api().get(`/api/leases/${lease.id}/regularizations/preview?year=2025`).expect(200)).body
     expect(keys(reg)).toEqual(['charges', 'daysInYear', 'existing', 'missingMonths', 'occupiedDays', 'suggestedMonthlyCharges', 'totalCharged', 'totalCharges', 'totalReal', 'year', 'balance'].sort())
-    expect(keys(reg.charges[0])).toEqual(['amount', 'id', 'label', 'share'])
+    expect(keys(reg.charges[0])).toEqual(['amount', 'id', 'label', 'occupiedDays', 'periodDays', 'quarter', 'share'])
     await api().post(`/api/leases/${lease.id}/regularizations`).send({ year: 2025 }).expect(201)
     const [saved] = (await api().get(`/api/leases/${lease.id}/regularizations`)).body
     expect(keys(saved)).toEqual(expect.arrayContaining(['id', 'leaseId', 'year', 'occupiedDays', 'daysInYear', 'totalCharged', 'totalReal', 'balance', 'sentAt', 'createdAt']))
+  })
+
+  it('notifications, quotes-parts datées et répartition des charges', async () => {
+    const p = await createProperty()
+    const t = await createTenant()
+    await createLease(p.id, t.id, { startDate: '2025-01-01T00:00:00.000Z', irlReference: 140, irlQuarter: 2, irlYear: 2024 })
+    await notificationsService.runRevisionReminders(new Date('2025-12-01'))
+    const [n] = (await api().get('/api/notifications').expect(200)).body
+    expect(keys(n)).toEqual(['body', 'createdAt', 'dueDate', 'id', 'kind', 'leaseId', 'link', 'readAt', 'title'])
+    const owners = (await api().put(`/api/properties/${p.id}/owners`).send({ owners: [{ userId: DEV_USER_ID, share: 1, startDate: '2020-01-01' }] }).expect(200)).body
+    expect(keys(owners[0])).toEqual(expect.arrayContaining(['id', 'userId', 'share', 'startDate', 'endDate', 'user']))
+    await api().post('/api/charges').send({ propertyId: p.id, year: 2026, quarter: 1, label: 'Eau', amount: 100 }).expect(201)
+    const [a] = (await api().get('/api/charges/allocation?year=2026').expect(200)).body
+    expect(keys(a)).toEqual(['owners', 'propertyId', 'propertyName', 'total'])
+    expect(keys(a.owners[0])).toEqual(['amount', 'endDate', 'name', 'share', 'startDate', 'userId'])
   })
 })

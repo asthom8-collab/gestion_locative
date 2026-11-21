@@ -22,7 +22,7 @@ export function lastPublishedYear(quarter: number, date: Date): number {
  * Proposition de révision : date (anniversaire du bail ou de la dernière révision), indice de référence,
  * nouvel indice (le plus récent du même trimestre) et loyer calculé. `missing` dit ce qui manque pour réviser.
  */
-async function compute(lease: LeaseForDocuments, date?: Date) {
+export async function computeRevision(lease: LeaseForDocuments, date?: Date) {
   const last = lease.rentRevisions[lease.rentRevisions.length - 1]
   const nextRevisionDate = addOneYear(toUtcDay(last ? last.effectiveDate : lease.startDate))
   // Date d'effet : celle demandée, sinon l'anniversaire (ou aujourd'hui si l'anniversaire est passé, la révision n'étant pas rétroactive)
@@ -64,13 +64,13 @@ export const revisionsService = {
   },
 
   async preview(leaseId: string, userId: string, date?: Date) {
-    return compute(await leaseOrThrow(leaseId, userId), date)
+    return computeRevision(await leaseOrThrow(leaseId, userId), date)
   },
 
   async apply(leaseId: string, userId: string, input: { effectiveDate: Date; newRent?: number }) {
     const lease = await leaseOrThrow(leaseId, userId)
     if (!lease.active) throw new AppError(409, 'Ce bail est terminé')
-    const p = await compute(lease, input.effectiveDate)
+    const p = await computeRevision(lease, input.effectiveDate)
     const effectiveDate = p.effectiveDate
     if (effectiveDate < p.nextRevisionDate) {
       throw new AppError(400, `Une révision par an au plus : pas avant le ${fmtDay(p.nextRevisionDate)}`)
@@ -116,7 +116,7 @@ export const revisionsService = {
     const r = lease.rentRevisions.find((x) => x.id === id)
     if (!r) throw new AppError(404, 'Révision introuvable')
     const pdf = await renderRevisionLetterPdf({
-      landlords: await landlordsFor(lease.property.ownerships),
+      landlords: await landlordsFor(lease.property.ownerships, r.effectiveDate),
       tenantName: `${lease.tenant.firstName} ${lease.tenant.lastName}`,
       property: lease.property,
       effectiveDate: r.effectiveDate,

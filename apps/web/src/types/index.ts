@@ -12,6 +12,9 @@ export interface Ownership {
   id: string
   userId: string
   share: number
+  /** Période de détention (bornes incluses), null = depuis toujours / encore propriétaire */
+  startDate: string | null
+  endDate: string | null
   user: Pick<User, 'id' | 'firstName' | 'lastName'>
 }
 
@@ -148,6 +151,12 @@ export interface Profile {
   /** Compte créé par l'administrateur : changer le mot de passe avant d'accéder au reste */
   mustChangePassword: boolean
   hasSignature: boolean
+  /** Notifications : délai avant l'anniversaire des baux (jours) et canaux */
+  notifyDaysBefore: number
+  notifyEmail: boolean
+  ntfyTopic: string | null
+  freeMobileUser: string | null
+  hasFreeMobileKey: boolean
 }
 
 /** Annuaire des utilisateurs (choix des copropriétaires). */
@@ -166,7 +175,26 @@ export interface CreateUserInput {
   role?: 'ADMIN' | 'USER'
 }
 
-export type UpdateProfileInput = Partial<Pick<Profile, 'firstName' | 'lastName' | 'address' | 'zipCode' | 'city'>>
+export type UpdateProfileInput = Partial<Pick<Profile, 'firstName' | 'lastName' | 'address' | 'zipCode' | 'city' | 'notifyDaysBefore' | 'notifyEmail' | 'ntfyTopic' | 'freeMobileUser'>> & {
+  /** Clé SMS Free Mobile : chaîne vide pour l'effacer, absente pour la garder */
+  freeMobileKey?: string | null
+}
+
+export interface AppNotification {
+  id: string
+  kind: string
+  leaseId: string | null
+  dueDate: string | null
+  title: string
+  body: string
+  /** Chemin dans l'application (/leases/…) ou adresse complète si APP_URL est configurée */
+  link: string | null
+  readAt: string | null
+  createdAt: string
+}
+export type ChannelResult = 'sent' | 'disabled' | 'not_configured' | { error: string }
+export interface NotificationTestResult { email: ChannelResult; ntfy: ChannelResult; sms: ChannelResult }
+export interface OwnerInput { userId: string; share: number; startDate?: string | null; endDate?: string | null }
 
 // ── Phase 4 : IRL, révisions, charges, régularisations ──
 export interface IrlIndex { id: string; quarter: number; year: number; value: number }
@@ -197,8 +225,15 @@ export interface RentRevision {
   newIrlYear: number
   createdAt: string
 }
-export interface Charge { id: string; propertyId: string; year: number; label: string; amount: number }
-export interface CreateChargeInput { propertyId: string; year: number; label: string; amount: number }
+/** quarter : trimestre (1 à 4), ou null pour l'année entière */
+export interface Charge { id: string; propertyId: string; year: number; quarter: number | null; label: string; amount: number }
+export interface CreateChargeInput { propertyId: string; year: number; quarter?: number | null; label: string; amount: number }
+export interface ChargeAllocation {
+  propertyId: string
+  propertyName: string
+  total: number
+  owners: { userId: string; name: string; share: number; startDate: string | null; endDate: string | null; amount: number }[]
+}
 export interface ChargeRegularization {
   id: string
   leaseId: string
@@ -215,7 +250,7 @@ export interface RegularizationPreview {
   year: number
   occupiedDays: number
   daysInYear: number
-  charges: { id: string; label: string; amount: number; share: number }[]
+  charges: { id: string; label: string; quarter: number | null; amount: number; occupiedDays: number; periodDays: number; share: number }[]
   totalCharges: number
   totalReal: number
   totalCharged: number

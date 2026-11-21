@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { OwnersModal, totalPercent } from './OwnersModal'
-import { mockApi, renderWithProviders, property } from '../test/utils'
+import { mockApi, renderWithProviders, property, reply } from '../test/utils'
 import type { Property } from '../types'
 
 const me = { id: 'u1', email: 'admin@local.dev', firstName: 'Thomas', lastName: 'Admin', role: 'ADMIN', address: null, zipCode: null, city: null, mustChangePassword: false, hasSignature: false }
@@ -27,7 +27,26 @@ describe('fenêtre des propriétaires', () => {
     fireEvent.click(save)
     await waitFor(() => expect(fetchMock.mock.calls.some(([, i]) => i?.method === 'PUT')).toBe(true))
     const call = fetchMock.mock.calls.find(([, i]) => i?.method === 'PUT')!
-    expect(JSON.parse(call[1]!.body as string)).toEqual({ owners: [{ userId: 'u1', share: 0.5 }, { userId: 'u2', share: 0.5 }] })
+    expect(JSON.parse(call[1]!.body as string)).toEqual({ owners: [
+      { userId: 'u1', share: 0.5, startDate: null, endDate: null }, { userId: 'u2', share: 0.5, startDate: null, endDate: null },
+    ] })
+  })
+
+  it('changement de propriétaire : dates de détention, total calculé à aujourd’hui', async () => {
+    const fetchMock = mockApi({ '/api/me': me, '/api/users': users, 'PUT /api/properties/p1/owners': reply(400, { error: 'La somme des quotes-parts doit faire 100 % au 01/07/2020 (actuellement 0 %)' }) })
+    renderWithProviders(<OwnersModal property={prop} onClose={() => {}} />)
+    fireEvent.change(await screen.findByLabelText('Ajouter un propriétaire'), { target: { value: 'u2' } })
+    fireEvent.change(screen.getByLabelText('Quote-part de Claire Copro'), { target: { value: '100' } })
+    fireEvent.change(screen.getByLabelText('Fin de détention de Thomas Admin'), { target: { value: '2020-06-30' } })
+    fireEvent.change(screen.getByLabelText('Début de détention de Claire Copro'), { target: { value: '2020-07-02' } })
+    expect(screen.getByText('ancien propriétaire')).toBeInTheDocument()
+    expect(screen.getByText(/Total aujourd’hui/)).toHaveTextContent('100 %')
+    fireEvent.click(screen.getByRole('button', { name: /Enregistrer/ }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('au 01/07/2020')
+    const call = fetchMock.mock.calls.find(([, i]) => i?.method === 'PUT')!
+    expect(JSON.parse(call[1]!.body as string).owners).toEqual([
+      { userId: 'u1', share: 1, startDate: null, endDate: '2020-06-30' }, { userId: 'u2', share: 1, startDate: '2020-07-02', endDate: null },
+    ])
   })
 
   it('on ne peut pas se retirer soi-même', async () => {

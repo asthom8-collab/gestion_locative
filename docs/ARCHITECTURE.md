@@ -76,9 +76,12 @@ middlewares/   validate, errorHandler (AppError → JSON { error }, zod → 400 
 | `GET/PUT/DELETE /api/me/signature` | Image de sa signature (PNG ou JPEG en data URL, 300 Ko au plus) |
 | `GET /api/users` | Annuaire (id, nom, e-mail) pour choisir les copropriétaires |
 | `POST /api/users`, `PUT /api/users/:id/password` | Administrateur : crée un compte, réinitialise un mot de passe (provisoire) |
-| `PUT /api/properties/:id/owners` | Copropriétaires du bien et quotes-parts |
+| `PUT /api/properties/:id/owners` | Copropriétaires du bien et quotes-parts, datées (`startDate`, `endDate` facultatives) |
 | `GET /api/irl`, `PUT /api/irl {quarter, year, value}` | Indices IRL (communs à tous les comptes) ; PUT crée ou corrige |
-| `GET /api/charges?year&propertyId`, `POST /api/charges`, `PATCH/DELETE /api/charges/:id` | Charges récupérables réelles d'un bien pour une année |
+| `GET /api/charges?year&propertyId`, `POST /api/charges`, `PATCH/DELETE /api/charges/:id` | Charges récupérables réelles d'un bien pour une année ou un trimestre (`quarter` 1 à 4, null = année) |
+| `GET /api/charges/allocation?year` | Répartition des charges de l'année entre propriétaires successifs (quotes-parts datées) |
+| `GET /api/notifications`, `POST /api/notifications/:id/read`, `POST …/read-all` | Notifications de l'utilisateur (50 dernières), lecture |
+| `POST /api/notifications/test` | Message d'essai sur tous les canaux ; résultat par canal (`sent`, `disabled`, `not_configured`, `{error}`) |
 | `GET /api/leases/:id/revisions`, `GET …/revisions/preview[?date]` | Historique des révisions ; proposition (date, indices, loyer maximum, ce qui manque) |
 | `POST /api/leases/:id/revisions {effectiveDate, newRent?}`, `DELETE …/revisions/:rid` | Applique une révision ; annule la dernière |
 | `GET /api/leases/:id/revisions/:rid/letter[?download]` | Avis de révision PDF (généré à la volée) |
@@ -158,6 +161,8 @@ erDiagram
     string propertyId FK
     string userId FK
     float share "1.0 = 100 %"
+    datetime startDate "null = depuis toujours"
+    datetime endDate "null = encore propriétaire"
   }
   Tenant {
     string id PK
@@ -213,6 +218,7 @@ erDiagram
   Charge {
     string propertyId FK
     int year
+    int quarter "1 à 4, null = année"
     string label
     float amount
   }
@@ -235,6 +241,15 @@ erDiagram
     int previousIrlYear
     float newIrlValue
     int newIrlYear
+  }
+  Notification {
+    string userId FK
+    string kind "REVISION_UPCOMING, TEST"
+    string leaseId
+    datetime dueDate
+    string title
+    string body
+    datetime readAt
   }
   IrlIndex {
     int quarter
@@ -281,7 +296,7 @@ erDiagram
 | Modèle | Rôle | Phase | Utilisé |
 |---|---|---|---|
 | **User** | Compte de connexion et bailleur (adresse, signature) | socle, 2, multipropriétaires | oui |
-| **Ownership** | Lien bien ↔ propriétaire, avec quote-part (copropriété) | socle | oui |
+| **Ownership** | Lien bien ↔ propriétaire, avec quote-part (copropriété) et période de détention ; une seule période par propriétaire et par bien | socle, 4 bis | oui |
 | **Property** | Bien loué | socle | oui |
 | **Tenant** | Locataire (`createdById` : qui l'a saisi) | socle | oui |
 | **Lease** | Bail : un seul bail actif par bien | socle | oui |
@@ -291,6 +306,7 @@ erDiagram
 | Charge, ChargeRegularization | Charges réelles par bien, régularisation annuelle par bail (unique par bail et par année) | 4 | oui |
 | RentRevision | Historique des révisions IRL d'un bail (valeurs avant/après) | 4 | oui |
 | IrlIndex | Indices IRL de l'INSEE, saisis à la main | 4 | oui |
+| Notification | Notification d'un propriétaire (rappel de révision, essai) ; unique par `(userId, kind, leaseId, dueDate)` | 4 bis | oui |
 | LmnpEntry | Écritures comptables LMNP | 5 | non |
 | Document | Pièces jointes (bail, locataire) | US-04 | non |
 | Inventory, InventoryRoom, InventoryElement, InventoryPhoto | États des lieux d'entrée et de sortie | US-22 à 25 | non |
@@ -332,20 +348,34 @@ Il faudra une migration au moment de faire l'écran concerné :
   et le nouvel IRL de référence. Le loyer d'une période se calcule jour par jour d'après l'historique (`rentAt`) : une
   révision en cours de mois est proratisée. Les échéances non payées touchées sont recalculées (aussi à l'annulation,
   possible pour la dernière révision seulement).
-- **Régularisation des charges** (art. 23) : part du locataire = charges réelles du bien de l'année × jours occupés /
-  jours de l'année (la vacance reste au bailleur) ; moins les provisions des échéances générées de l'année (les mois
+- **Régularisation des charges** (art. 23) : part du locataire = somme, pour chaque charge, de montant × jours occupés
+  dans la période de la charge (trimestre ou année) / jours de la période (la vacance reste au bailleur) ; moins les provisions des échéances générées de l'année (les mois
   sans échéance sont signalés) ; solde > 0 à réclamer, < 0 à rembourser. Une régularisation par bail et par année ; on
   la supprime pour la refaire. Provision mensuelle suggérée = charges de l'année / 12.
 - **Courriers PDF** (avis de révision, décompte) : générés à la volée, non stockés, avec les bailleurs et leurs
   signatures comme la quittance (`services/landlords.ts`, `lib/pdfCommon.ts`).
+- **Quotes-parts datées** (`lib/ownership.ts`) : un propriétaire possède le bien de `startDate` à `endDate` incluses
+  (null = sans limite). `checkTimeline` impose qu'à chaque date où le bien est détenu la somme fasse 100 % (pas de trou,
+  pas de chevauchement), et au moins un propriétaire actuel. Un ancien propriétaire garde l'accès au bien (historique).
+  Les courriers prennent les propriétaires à leur date : quittance au début de la période, avis de révision à la date
+  d'effet, décompte de régularisation au jour de l'édition.
+- **Répartition des charges entre propriétaires** : pour chaque charge, quote-part × jours détenus dans sa période /
+  jours de la période (`allocate`). D'où l'intérêt de saisir les charges par trimestre quand le bien change de mains.
+- **Rappels de révision** (`services/notifications.ts`) : tâche lancée au démarrage de l'API puis toutes les 6 heures
+  (`NOTIFICATIONS=off` pour la couper). Pour chaque bail actif dont l'anniversaire (ou celui de la dernière révision)
+  est à venir dans le délai de chaque propriétaire (`User.notifyDaysBefore`, 60 jours par défaut), une notification
+  par propriétaire **à la date anniversaire**, avec le loyer révisé maximum (ou l'indice manquant) et sa quote-part.
+  Une seule par bail, propriétaire et anniversaire. Envoyée aussi par e-mail (si `SMTP_HOST` est configuré et
+  `notifyEmail`), sur ntfy (`ntfyTopic`) et par SMS Free Mobile (`freeMobileUser`/`freeMobileKey`, clé jamais renvoyée
+  par l'API) ; un échec d'envoi est journalisé sans bloquer (`lib/notifiers.ts`).
 - **Dates** : stockées en UTC à minuit. Les calculs de période se font en UTC des deux côtés.
 
 ### 5.1 Conséquences prévues de la copropriété (phases suivantes)
 
 - **Impôts** (revenus fonciers, LMNP) : chaque copropriétaire déclare **sa part**. Les revenus encaissés et les charges
   d'un bien seront répartis au prorata de `Ownership.share` dans les écrans et exports fiscaux (un récapitulatif par
-  propriétaire et par année). La quote-part étant modifiable, il faudra soit la figer par année fiscale (historique
-  des quotes-parts), soit l'appliquer telle qu'elle est au moment de l'export : décision à prendre en phase 5.
+  propriétaire et par année). Les quotes-parts sont datées depuis la phase 4 bis : la répartition se fera au jour,
+  comme pour les charges (`allocate`).
 - **Régime fiscal** : aujourd'hui porté par le bien (`Property.fiscalRegime`), donc commun à tous les copropriétaires.
   Si deux copropriétaires relèvent de régimes différents, il faudra le déplacer sur `Ownership`.
 - **Documents et états des lieux** : visibles par tous les copropriétaires du bien (même règle que les baux).
@@ -374,8 +404,9 @@ src/components/icons.tsx   point d'entrée unique des icônes lucide-react
 | `/leases` | Locations (baux) : liste, création |
 | `/leases/:id` | Fiche du bail : conditions, modification, résiliation, échéances et quittances du bail |
 | `/rents?year&month` | Loyers : génération, encaissements, quittances |
-| `/charges?year` | Charges récupérables par bien et par année, liens vers la régularisation de chaque bail |
-| `/settings` | Paramètres : identité et adresse, signature, mot de passe, comptes (administrateur) |
+| `/charges?year` | Charges récupérables par bien, par année ou par trimestre, répartition entre propriétaires successifs, liens vers la régularisation de chaque bail |
+| `/notifications` | Notifications (rappels de révision) ; cloche avec le nombre de non lues dans la barre latérale et l'en-tête mobile |
+| `/settings` | Paramètres : identité et adresse, signature, mot de passe, notifications (délai, e-mail, ntfy, SMS Free Mobile, essai), indices IRL, comptes (administrateur) |
 
 **Connexion** : `components/auth/AuthGate` n'affiche l'application qu'à un utilisateur connecté ; sinon l'écran de
 connexion, ou le changement obligatoire du mot de passe provisoire. Une 401 pendant l'utilisation (session expirée)
@@ -415,7 +446,8 @@ du front.
 - **CI** (`.github/workflows/ci.yml`) : compilation et tests des deux apps (service PostgreSQL), puis images Docker.
   Sur `main` ou un tag `v*`, publication sur GHCR : `ghcr.io/asthom8-collab/gestion-locative-{api,web}:{latest,sha-xxxxxxx,X.Y.Z}`.
 - **Secrets** : `.env` à la racine (ignoré par git), modèles dans `apps/*/.env.example`. `SESSION_SECRET` y est
-  obligatoire pour le conteneur `api` (`openssl rand -hex 32`).
+  obligatoire pour le conteneur `api` (`openssl rand -hex 32`). Notifications : `APP_URL` (liens absolus dans les
+  e-mails et sur le téléphone) et `SMTP_HOST/PORT/USER/PASS/FROM` (sans `SMTP_HOST`, pas d'e-mail).
 - **Fichiers** : `storage/` (PDF, futurs documents des locataires) n'est jamais commité.
 
 ## 9. Sécurité et points ouverts

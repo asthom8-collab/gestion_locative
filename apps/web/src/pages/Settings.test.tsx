@@ -6,6 +6,7 @@ import { mockApi, renderWithProviders } from '../test/utils'
 const profile = {
   id: 'u1', email: 'admin@local.dev', firstName: 'Thomas', lastName: 'Admin', role: 'ADMIN',
   address: null, zipCode: null, city: null,
+  notifyDaysBefore: 60, notifyEmail: true, ntfyTopic: null, freeMobileUser: null, hasFreeMobileKey: false,
 }
 
 describe('page Paramètres', () => {
@@ -74,5 +75,29 @@ describe('page Paramètres : indices IRL', () => {
     fireEvent.change(screen.getByLabelText('Valeur'), { target: { value: '146' } })
     fireEvent.click(screen.getAllByRole('button', { name: 'Enregistrer' }).slice(-1)[0])
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/irl', expect.objectContaining({ method: 'PUT', body: JSON.stringify({ quarter: 3, year: 2025, value: 146 }) })))
+  })
+})
+
+describe('page Paramètres : notifications', () => {
+  it('enregistre le délai et les canaux, sans renvoyer la clé SMS si elle n’est pas modifiée', async () => {
+    const fetchMock = mockApi({ '/api/me': { ...profile, hasFreeMobileKey: true, freeMobileUser: '123' }, '/api/irl': [], 'PATCH /api/me': profile })
+    renderWithProviders(<Settings />)
+    fireEvent.change(await screen.findByLabelText('Prévenir combien de jours avant l\'anniversaire du bail'), { target: { value: '45' } })
+    fireEvent.change(screen.getByLabelText('Téléphone : sujet ntfy'), { target: { value: 'mon-sujet' } })
+    expect(screen.getByLabelText('Clé d\'identification')).toHaveAttribute('placeholder', 'enregistrée (laisser vide pour la garder)')
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer les notifications' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/me', expect.objectContaining({
+      method: 'PATCH', body: JSON.stringify({ notifyDaysBefore: 45, notifyEmail: true, ntfyTopic: 'mon-sujet', freeMobileUser: '123' }),
+    })))
+  })
+
+  it('envoie un essai et affiche le résultat de chaque canal', async () => {
+    mockApi({ '/api/me': profile, '/api/irl': [], 'POST /api/notifications/test': { email: 'not_configured', ntfy: 'sent', sms: { error: 'SMS Free Mobile : refusé' } } })
+    renderWithProviders(<Settings />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Envoyer un essai' }))
+    const result = await screen.findByRole('list', { name: 'Résultat de l’essai' })
+    expect(result).toHaveTextContent('E-mail : serveur d’e-mail (SMTP) non configuré')
+    expect(result).toHaveTextContent('ntfy : envoyé')
+    expect(result).toHaveTextContent('SMS : échec (SMS Free Mobile : refusé)')
   })
 })

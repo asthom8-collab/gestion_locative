@@ -9,6 +9,7 @@ import usersRouter from './users'
 import irlRouter from './irl'
 import chargesRouter from './charges'
 import leaseDocumentsRouter from './leaseDocuments'
+import notificationsRouter from './notifications'
 import { requireAuth } from '../middlewares/auth'
 
 const router = Router()
@@ -26,5 +27,6 @@ router.use('/me', meRouter)
 router.use('/users', usersRouter)
 router.use('/irl', irlRouter)
 router.use('/charges', chargesRouter)
+router.use('/notifications', notificationsRouter)
 
 export default router

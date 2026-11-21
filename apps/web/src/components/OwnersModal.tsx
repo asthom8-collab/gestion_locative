@@ -11,14 +11,20 @@ import { Check, X } from './icons'
 import { fullName } from '../lib/format'
 import type { Property } from '../types'
 
-type Row = { userId: string; percent: number }
+type Row = { userId: string; percent: number; startDate: string; endDate: string }
+
+const today = () => new Date().toISOString().slice(0, 10)
+/** Propriétaire à une date (AAAA-MM-JJ) : dates vides = sans limite. */
+const ownsAt = (r: Row, day: string) => (!r.startDate || r.startDate <= day) && (!r.endDate || r.endDate >= day)
 
 /** Somme des quotes-parts en pourcentage, arrondie au centième. */
-export const totalPercent = (rows: Row[]) => Math.round(rows.reduce((s, r) => s + (Number(r.percent) || 0), 0) * 100) / 100
+export const totalPercent = (rows: { userId?: string; percent: number }[]) => Math.round(rows.reduce((s, r) => s + (Number(r.percent) || 0), 0) * 100) / 100
 
 /**
  * Copropriétaires d'un bien et leurs quotes-parts (en %, total 100 %). Tous ont les mêmes droits sur le bien.
- * On ne peut pas se retirer soi-même (on perdrait l'accès au bien).
+ * On ne peut pas se retirer soi-même (on perdrait l'accès au bien). Les dates de début et de fin, facultatives, servent
+ * aux changements de propriétaire : l'ancien propriétaire reçoit une date de fin et garde son historique ;
+ * l'API vérifie qu'à chaque date les quotes-parts font 100 %.
  */
 export function OwnersModal({ property, onClose }: { property: Property; onClose: () => void }) {
   const { data: users = [] } = useDirectory()
@@ -26,24 +32,32 @@ export function OwnersModal({ property, onClose }: { property: Property; onClose
   const setM = useSetOwners()
   const { error, run } = useActionError()
   const [rows, setRows] = useState<Row[]>(() =>
-    (property.ownerships ?? []).map(o => ({ userId: o.userId, percent: Math.round(o.share * 10000) / 100 })))
+    (property.ownerships ?? []).map(o => ({
+      userId: o.userId, percent: Math.round(o.share * 10000) / 100,
+      startDate: o.startDate?.slice(0, 10) ?? '', endDate: o.endDate?.slice(0, 10) ?? '',
+    })))
 
   const nameOf = (id: string) => {
     const u = users.find(x => x.id === id) ?? property.ownerships?.find(o => o.userId === id)?.user
     return u ? fullName(u) : '…'
   }
   const available = users.filter(u => !rows.some(r => r.userId === u.id))
-  const total = totalPercent(rows)
-  const valid = rows.length > 0 && total === 100 && rows.every(r => r.percent > 0)
+  const dated = rows.some(r => r.startDate || r.endDate)
+  // Avec des dates, le total affiché est celui d'aujourd'hui ; l'API vérifie toute la chronologie
+  const total = totalPercent(dated ? rows.filter(r => ownsAt(r, today())) : rows)
+  const valid = rows.length > 0 && rows.every(r => r.percent > 0) && (dated || total === 100)
 
-  const add = (userId: string) => setRows([...rows, { userId, percent: 0 }])
-  const share = (i: number, percent: number) => setRows(rows.map((r, j) => (j === i ? { ...r, percent } : r)))
+  const add = (userId: string) => setRows([...rows, { userId, percent: 0, startDate: '', endDate: '' }])
+  const patch = (i: number, p: Partial<Row>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...p } : r)))
+  const share = (i: number, percent: number) => patch(i, { percent })
   const equalize = () => {
     const base = Math.floor(10000 / rows.length) / 100
     setRows(rows.map((r, i) => ({ ...r, percent: i === 0 ? Math.round((100 - base * (rows.length - 1)) * 100) / 100 : base })))
   }
   const save = async () => {
-    const ok = await run(() => setM.mutateAsync({ id: property.id, owners: rows.map(r => ({ userId: r.userId, share: r.percent / 100 })) }))
+    const ok = await run(() => setM.mutateAsync({ id: property.id, owners: rows.map(r => ({
+      userId: r.userId, share: r.percent / 100, startDate: r.startDate || null, endDate: r.endDate || null,
+    })) }))
     if (ok) onClose()
   }
 
@@ -51,11 +65,15 @@ export function OwnersModal({ property, onClose }: { property: Property; onClose
     <Modal title={`Propriétaires — ${property.name}`} onClose={onClose}>
       <ErrorAlert message={error} />
       <p className="text-sm text-slate-500 mb-4">
-        Tous les propriétaires voient le bien, ses baux et ses loyers, et signent les quittances. La quote-part servira à répartir les revenus pour les impôts.
+        Tous les propriétaires voient le bien, ses baux et ses loyers, et signent les quittances. La quote-part sert à répartir les charges, et servira pour les impôts.
+      </p>
+      <p className="text-xs text-slate-500 mb-4">
+        Changement de propriétaire : donnez une date de fin à l'ancien et une date de début au nouveau (dates facultatives, sinon « depuis toujours »).
       </p>
       <div className="space-y-2 mb-3">
         {rows.map((r, i) => (
-          <div key={r.userId} className="flex items-center gap-2">
+          <div key={r.userId} className="rounded-lg border border-slate-100 p-2">
+          <div className="flex items-center gap-2">
             <span className="flex-1 min-w-0 text-sm font-medium text-slate-800 truncate">
               {nameOf(r.userId)}{r.userId === me?.id && <span className="text-slate-400 font-normal"> (vous)</span>}
             </span>
@@ -70,6 +88,18 @@ export function OwnersModal({ property, onClose }: { property: Property; onClose
               <X size={15} />
             </button>
           </div>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-slate-500">
+            <label className="flex items-center gap-1.5">Depuis le
+              <input type="date" aria-label={`Début de détention de ${nameOf(r.userId)}`} className={`${inputCls} !py-1 !text-xs w-36`}
+                value={r.startDate} onChange={e => patch(i, { startDate: e.target.value })} />
+            </label>
+            <label className="flex items-center gap-1.5">jusqu'au
+              <input type="date" aria-label={`Fin de détention de ${nameOf(r.userId)}`} className={`${inputCls} !py-1 !text-xs w-36`}
+                value={r.endDate} onChange={e => patch(i, { endDate: e.target.value })} />
+            </label>
+            {r.endDate && r.endDate < today() && <span className="text-amber-700 self-center">ancien propriétaire</span>}
+          </div>
+          </div>
         ))}
       </div>
       {available.length > 0 && (
@@ -83,7 +113,7 @@ export function OwnersModal({ property, onClose }: { property: Property; onClose
       )}
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm">
-          Total : <span className={total === 100 ? 'font-semibold text-emerald-700' : 'font-semibold text-rose-600'}>{total} %</span>
+          {dated ? 'Total aujourd’hui' : 'Total'} : <span className={total === 100 ? 'font-semibold text-emerald-700' : 'font-semibold text-rose-600'}>{total} %</span>
           {rows.length > 1 && <button onClick={equalize} className="ml-3 text-xs text-indigo-600 hover:underline">Parts égales</button>}
         </div>
         <Button onClick={save} disabled={!valid || setM.isPending}><Check size={16} />Enregistrer</Button>

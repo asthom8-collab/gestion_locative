@@ -56,6 +56,16 @@ export function RegularizationCard({ lease }: { lease: LeaseDetail }) {
           <div className="text-sm space-y-1 rounded-lg bg-slate-50 border border-slate-200 p-3">
             <Row label={`Charges réelles du bien (${p.charges.length})`} value={eur(p.totalCharges)} />
             <Row label={`Part du locataire : ${p.occupiedDays} j sur ${p.daysInYear}`} value={eur(p.totalReal)} />
+            {p.charges.some(c => c.quarter) && (
+              <ul className="text-xs text-slate-500 pl-3 space-y-0.5" aria-label="Détail par période">
+                {p.charges.map(c => (
+                  <li key={c.id} className="flex justify-between gap-2">
+                    <span className="truncate">{c.quarter ? `T${c.quarter}` : 'Année'} · {c.label} ({c.occupiedDays} j sur {c.periodDays})</span>
+                    <span className="shrink-0">{eur(c.share)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
             <Row label="Provisions appelées" value={`− ${eur(p.totalCharged)}`} />
             <Row strong label={p.balance > 0 ? 'Reste à payer par le locataire' : p.balance < 0 ? 'À rembourser au locataire' : 'Solde'} value={eur(Math.abs(p.balance))} />
           </div>

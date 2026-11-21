@@ -1,5 +1,8 @@
+import { checkTimeline } from '../lib/ownership'
 import { propertiesRepository, CreatePropertyInput, UpdatePropertyInput } from '../repositories/properties'
 import { AppError } from '../middlewares/errorHandler'
+
+type OwnerInput = { userId: string; share: number; startDate?: Date | null; endDate?: Date | null }
 
 export const propertiesService = {
   async getAll(userId: string) {
@@ -23,15 +26,17 @@ export const propertiesService = {
 
   /**
    * Copropriétaires du bien : mêmes droits pour tous. On ne peut pas se retirer soi-même
-   * (on perdrait l'accès au bien) ; la somme des quotes-parts doit faire 100 %.
+   * (on perdrait l'accès au bien) ; à chaque date, la somme des quotes-parts doit faire 100 %.
+   * Un ancien propriétaire (date de fin passée) garde l'accès au bien, pour son historique.
    */
-  async setOwners(id: string, userId: string, owners: { userId: string; share: number }[]) {
+  async setOwners(id: string, userId: string, input: OwnerInput[]) {
+    const owners = input.map((o) => ({ userId: o.userId, share: o.share, startDate: o.startDate ?? null, endDate: o.endDate ?? null }))
     await propertiesService.getById(id, userId)
     const ids = owners.map((o) => o.userId)
     if (new Set(ids).size !== ids.length) throw new AppError(400, 'Un propriétaire apparaît deux fois')
     if (!ids.includes(userId)) throw new AppError(400, 'Vous ne pouvez pas vous retirer vous-même des propriétaires du bien')
-    const total = owners.reduce((s, o) => s + o.share, 0)
-    if (Math.abs(total - 1) > 0.0001) throw new AppError(400, `La somme des quotes-parts doit faire 100 % (actuellement ${Math.round(total * 10000) / 100} %)`)
+    const error = checkTimeline(owners)
+    if (error) throw new AppError(400, error)
     if ((await propertiesRepository.countUsers(ids)) !== ids.length) throw new AppError(404, 'Utilisateur introuvable')
     return propertiesRepository.setOwners(id, owners)
   },

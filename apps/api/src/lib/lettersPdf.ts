@@ -65,7 +65,7 @@ export type RegularizationData = {
   year: number
   occupiedDays: number
   daysInYear: number
-  charges: { label: string; amount: number; share: number }[]
+  charges: { label: string; quarter?: number | null; amount: number; share: number }[]
   totalCharges: number
   totalReal: number
   totalCharged: number
@@ -89,7 +89,7 @@ export function renderRegularizationPdf(d: RegularizationData) {
     doc.moveDown(1)
     doc.font('Helvetica-Bold').text('Charges réelles de l’année')
     doc.moveDown(0.3)
-    d.charges.forEach((c) => amountRow(doc, x, width, `${c.label} (${eur(c.amount)} au total)`, eur(c.share)))
+    d.charges.forEach((c) => amountRow(doc, x, width, `${c.label}${c.quarter ? ` (T${c.quarter})` : ''} (${eur(c.amount)} au total)`, eur(c.share)))
     doc.moveTo(x, doc.y).lineTo(x + width, doc.y).stroke()
     doc.moveDown(0.4)
     amountRow(doc, x, width, 'Votre part des charges réelles', eur(d.totalReal), true)

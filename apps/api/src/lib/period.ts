@@ -93,3 +93,16 @@ export function occupiedDaysInYear(lease: { startDate: Date; endDate: Date | nul
 }
 
 export const daysInYear = (year: number) => daysBetween(new Date(Date.UTC(year, 0, 1)), new Date(Date.UTC(year, 11, 31)))
+
+/** Bornes d'un trimestre (1 à 4) ou de l'année entière (quarter null). */
+export function periodBounds(year: number, quarter: number | null) {
+  if (!quarter) return { start: new Date(Date.UTC(year, 0, 1)), end: new Date(Date.UTC(year, 11, 31)) }
+  return { start: new Date(Date.UTC(year, 3 * (quarter - 1), 1)), end: new Date(Date.UTC(year, 3 * quarter, 0)) }
+}
+
+/** Jours communs (bornes incluses) entre une période et un intervalle aux bornes facultatives (null = ouvert). */
+export function overlapDays(period: { start: Date; end: Date }, from: Date | null, to: Date | null): number {
+  const s = from && toUtcDay(from) > period.start ? toUtcDay(from) : period.start
+  const e = to && toUtcDay(to) < period.end ? toUtcDay(to) : period.end
+  return s > e ? 0 : daysBetween(s, e)
+}

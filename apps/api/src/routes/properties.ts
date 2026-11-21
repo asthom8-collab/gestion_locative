@@ -21,7 +21,13 @@ const updateSchema = createSchema.partial()
 
 // Copropriétaires : liste complète, quotes-parts entre 0 et 1 dont la somme vaut 1
 const ownersSchema = z.object({
-  owners: z.array(z.object({ userId: z.string().min(1), share: z.number().gt(0).max(1) })).min(1).max(20),
+  owners: z.array(z.object({
+    userId: z.string().min(1),
+    share: z.number().gt(0).max(1),
+    // Période de détention (AAAA-MM-JJ), facultative : changement de propriétaire en cours d'année
+    startDate: z.coerce.date().nullable().optional(),
+    endDate: z.coerce.date().nullable().optional(),
+  })).min(1).max(40),
 })
 
 router.get('/', propertiesController.getAll)

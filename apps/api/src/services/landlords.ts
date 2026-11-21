@@ -2,13 +2,17 @@ import { readFile } from 'node:fs/promises'
 import { AppError } from '../middlewares/errorHandler'
 import { storagePath } from '../lib/storage'
 import type { Landlord } from '../lib/pdfCommon'
+import { ownersAt } from '../lib/ownership'
 
 type Owner = { firstName: string; lastName: string; address: string | null; zipCode: string | null; city: string | null; signaturePath: string | null }
 
-/** Bailleurs d'un bien pour un document (quittance, courrier) : adresse obligatoire, signature facultative. */
-export async function landlordsFor(ownerships: { user: Owner }[]): Promise<Landlord[]> {
-  const owners = ownerships.map((o) => o.user)
-  if (!owners.length) throw new AppError(409, 'Ce bien n’a pas de propriétaire')
+/**
+ * Bailleurs d'un bien pour un document (quittance, courrier) : les propriétaires à la date du document
+ * (quotes-parts datées) ; adresse obligatoire, signature facultative.
+ */
+export async function landlordsFor(ownerships: { user: Owner; startDate: Date | null; endDate: Date | null }[], at: Date): Promise<Landlord[]> {
+  const owners = ownersAt(ownerships, at).map((o) => o.user)
+  if (!owners.length) throw new AppError(409, 'Ce bien n’a pas de propriétaire à cette date')
   const incomplete = owners.find((u) => !u.address || !u.zipCode || !u.city)
   if (incomplete) {
     throw new AppError(409, `Adresse du bailleur manquante (${incomplete.firstName} ${incomplete.lastName}) : complétez-la dans Paramètres`)

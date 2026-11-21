@@ -34,11 +34,18 @@ model User {
   mustChangePassword Boolean  @default(false)
   // Incrémentée au changement de mot de passe : invalide les sessions ouvertes ailleurs
   sessionVersion     Int      @default(0)
+  // Notifications : délai avant l'anniversaire des baux, e-mail, téléphone (ntfy ou SMS Free Mobile)
+  notifyDaysBefore   Int      @default(60)
+  notifyEmail        Boolean  @default(true)
+  ntfyTopic          String?
+  freeMobileUser     String?
+  freeMobileKey      String?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
   ownerships     Ownership[]
   createdTenants Tenant[]   @relation("TenantCreatedBy")
+  notifications  Notification[]
 }
 
 // ─────────────────────────────────────────
@@ -85,6 +92,9 @@ model Ownership {
   user       User     @relation(fields: [userId], references: [id])
   userId     String
   share      Float    @default(1.0)
+  // Période de détention (bornes incluses) ; null = depuis toujours / encore propriétaire
+  startDate  DateTime?
+  endDate    DateTime?
   createdAt  DateTime @default(now())
 
   @@unique([propertyId, userId])
@@ -229,6 +239,8 @@ model Charge {
   property   Property @relation(fields: [propertyId], references: [id])
   propertyId String
   year       Int
+  // Trimestre (1 à 4) ou null pour l'année entière
+  quarter    Int?
   label      String
   amount     Float
   createdAt  DateTime @default(now())
@@ -383,4 +395,28 @@ model InventoryPhoto {
   elementId String
   filePath  String
   createdAt DateTime         @default(now())
+}
+
+// ─────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────
+
+// Notification d'un propriétaire (ex. révision annuelle à préparer) ; une seule par bail, sujet et échéance
+model Notification {
+  id          String    @id @default(cuid())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  kind        String
+  leaseId     String?
+  dueDate     DateTime?
+  title       String
+  body        String
+  link        String?
+  readAt      DateTime?
+  emailSentAt DateTime?
+  phoneSentAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, kind, leaseId, dueDate])
+  @@index([userId, createdAt])
 }

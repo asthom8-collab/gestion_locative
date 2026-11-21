@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { useMe, useSetSignature, useDeleteSignature } from '../../hooks/useMe'
+import { useMe, useSetSignature, useDeleteSignature, useUpdateMe } from '../../hooks/useMe'
+import { useTestNotification } from '../../hooks/useNotifications'
 import { useDirectory, useCreateUser, useResetPassword } from '../../hooks/useUsers'
 import { useActionError } from '../../hooks/useActionError'
 import { useIrlIndexes, useSaveIrl } from '../../hooks/useRevisions'
@@ -10,9 +11,9 @@ import { Modal } from '../../components/ui/Modal'
 import { Field, inputCls } from '../../components/ui/Field'
 import { ErrorAlert } from '../../components/ui/ErrorAlert'
 import { PasswordForm } from '../../components/auth/PasswordForm'
-import { Check, PenLine, KeyRound, Users2, Upload, Trash2, Plus } from '../../components/icons'
+import { Check, PenLine, KeyRound, Users2, Upload, Trash2, Plus, Bell, Send } from '../../components/icons'
 import { fullName, initials } from '../../lib/format'
-import type { CreateUserInput, DirectoryUser } from '../../types'
+import type { ChannelResult, CreateUserInput, DirectoryUser, NotificationTestResult, Profile, UpdateProfileInput } from '../../types'
 
 const MAX_SIGNATURE_BYTES = 300 * 1024
 
@@ -205,6 +206,97 @@ export function IrlCard() {
             </div>
           ))}
         </div>
+      )}
+    </Card>
+  )
+}
+
+const channelText = (r: ChannelResult, notConfigured: string) =>
+  r === 'sent' ? 'envoyé' : r === 'disabled' ? 'désactivé' : r === 'not_configured' ? notConfigured : `échec (${r.error})`
+
+/**
+ * Notifications : délai avant l'anniversaire des baux, e-mail, téléphone (application ntfy ou SMS Free Mobile).
+ * La clé Free Mobile n'est jamais renvoyée par l'API : champ vide = on garde celle enregistrée.
+ */
+export function NotificationsCard() {
+  const { data: me } = useMe()
+  return me ? <NotificationsForm me={me} /> : null
+}
+
+function NotificationsForm({ me }: { me: Profile }) {
+  const updateM = useUpdateMe()
+  const testM = useTestNotification()
+  const { error, run, clear } = useActionError()
+  const [form, setForm] = useState({
+    notifyDaysBefore: String(me.notifyDaysBefore), notifyEmail: me.notifyEmail,
+    ntfyTopic: me.ntfyTopic ?? '', freeMobileUser: me.freeMobileUser ?? '', freeMobileKey: '',
+  })
+  const [saved, setSaved] = useState(false)
+  const [test, setTest] = useState<NotificationTestResult | null>(null)
+  const set = (patch: Partial<typeof form>) => { setForm({ ...form, ...patch }); setSaved(false) }
+  const days = Number(form.notifyDaysBefore)
+  const validDays = Number.isInteger(days) && days >= 1 && days <= 180
+  const save = async (extra: UpdateProfileInput = {}) => {
+    const data: UpdateProfileInput = {
+      notifyDaysBefore: days, notifyEmail: form.notifyEmail, ntfyTopic: form.ntfyTopic.trim(), freeMobileUser: form.freeMobileUser.trim(),
+      ...(form.freeMobileKey ? { freeMobileKey: form.freeMobileKey.trim() } : {}), ...extra,
+    }
+    if (await run(() => updateM.mutateAsync(data))) { setSaved(true); setForm(f => ({ ...f, freeMobileKey: '' })) }
+  }
+  const sendTest = async () => {
+    setTest(null)
+    await run(async () => setTest(await testM.mutateAsync() as NotificationTestResult))
+  }
+
+  return (
+    <Card className="p-5">
+      <h3 className="font-semibold tracking-tight mb-1 flex items-center gap-2"><Bell size={16} />Notifications</h3>
+      <p className="text-xs text-slate-500 mb-4">
+        Avant la date anniversaire de chaque bail, un rappel arrive dans l'application (cloche) et sur les canaux choisis ici,
+        avec le loyer révisé et votre quote-part, pour préparer le courrier au locataire. Chaque copropriétaire règle ses propres canaux.
+      </p>
+      <ErrorAlert message={error} onClose={clear} />
+      <div className="space-y-4">
+        <Field label="Prévenir combien de jours avant l'anniversaire du bail">
+          <input type="number" min={1} max={180} className={`${inputCls} w-28`} value={form.notifyDaysBefore} onChange={e => set({ notifyDaysBefore: e.target.value })} />
+        </Field>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" checked={form.notifyEmail} onChange={e => set({ notifyEmail: e.target.checked })} />
+          Recevoir aussi un e-mail ({me.email})
+        </label>
+        <Field label="Téléphone : sujet ntfy">
+          <input className={inputCls} placeholder="ex. gestion-locative-7k2p9x" value={form.ntfyTopic} onChange={e => set({ ntfyTopic: e.target.value })} />
+        </Field>
+        <p className="text-xs text-slate-500 -mt-2">
+          Installez l'application gratuite <strong>ntfy</strong> (App Store ou Google Play), abonnez-vous à un sujet difficile à deviner
+          (n'importe qui connaissant le sujet peut lire les messages), puis saisissez le même sujet ici.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <Field label="Téléphone : SMS Free Mobile (identifiant)">
+            <input className={inputCls} placeholder="identifiant Free Mobile" value={form.freeMobileUser} onChange={e => set({ freeMobileUser: e.target.value })} />
+          </Field>
+          <Field label="Clé d'identification">
+            <input type="password" autoComplete="off" className={inputCls} value={form.freeMobileKey} onChange={e => set({ freeMobileKey: e.target.value })}
+              placeholder={me.hasFreeMobileKey ? 'enregistrée (laisser vide pour la garder)' : 'clé de l’option SMS'} />
+          </Field>
+        </div>
+        <p className="text-xs text-slate-500 -mt-2">
+          Abonnés Free Mobile : activez l'option gratuite « Notifications par SMS » dans l'espace abonné (Mes options), qui donne la clé.
+          {me.hasFreeMobileKey && <> <button className="text-rose-600 underline" onClick={() => save({ freeMobileKey: '' })}>Supprimer la clé</button></>}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2 mt-4">
+        <Button onClick={() => save()} disabled={!validDays || updateM.isPending}><Check size={16} />Enregistrer les notifications</Button>
+        <Button variant="ghost" onClick={sendTest} disabled={testM.isPending}><Send size={16} />Envoyer un essai</Button>
+        {saved && <span className="text-sm text-emerald-700">Enregistré</span>}
+      </div>
+      {test && (
+        <ul className="text-sm text-slate-600 mt-3 space-y-0.5" aria-label="Résultat de l’essai">
+          <li>Application : envoyé (voir la cloche)</li>
+          <li>E-mail : {channelText(test.email, 'serveur d’e-mail (SMTP) non configuré sur le serveur')}</li>
+          <li>ntfy : {channelText(test.ntfy, 'pas de sujet')}</li>
+          <li>SMS : {channelText(test.sms, 'identifiant ou clé manquants')}</li>
+        </ul>
       )}
     </Card>
   )

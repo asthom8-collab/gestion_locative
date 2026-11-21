@@ -1,6 +1,7 @@
 import { createLogger, transports, format } from 'winston'
 import { app } from './app'
 import { checkAuthConfig } from './lib/auth'
+import { startNotificationScheduler } from './services/notifications'
 
 const logger = createLogger({
   level: 'info',
@@ -15,3 +16,6 @@ const PORT = process.env.PORT ?? 3001
 app.listen(PORT, () => {
   logger.info(`API démarrée sur le port ${PORT}`)
 })
+
+// Rappels de révision (anniversaire des baux) : NOTIFICATIONS=off pour les désactiver
+if (process.env.NOTIFICATIONS !== 'off') startNotificationScheduler()

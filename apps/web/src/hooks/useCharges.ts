@@ -3,6 +3,9 @@ import { api } from '../api/client'
 import type { CreateChargeInput } from '../types'
 
 export const useCharges = (year: number) => useQuery({ queryKey: ['charges', year], queryFn: () => api.charges.list(year) })
+/** Répartition des charges de l'année entre propriétaires (quotes-parts datées). */
+export const useChargeAllocation = (year: number) =>
+  useQuery({ queryKey: ['charges', 'allocation', year], queryFn: () => api.charges.allocation(year) })
 
 function useChargeMutation<V>(fn: (v: V) => Promise<unknown>) {
   const qc = useQueryClient()

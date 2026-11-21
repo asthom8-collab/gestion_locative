@@ -42,12 +42,19 @@ export const api = {
     letterUrl: (leaseId: string, id: string, download = false) =>
       `${BASE}/leases/${leaseId}/revisions/${id}/letter${download ? '?download' : ''}`,
   },
+  notifications: {
+    list: () => request<T.AppNotification[]>('/notifications'),
+    read: (id: string) => request<void>(`/notifications/${id}/read`, { method: 'POST' }),
+    readAll: () => request<void>('/notifications/read-all', { method: 'POST' }),
+    test: () => request<T.NotificationTestResult>('/notifications/test', { method: 'POST' }),
+  },
   charges: {
     list: (year: number) => request<T.Charge[]>(`/charges?year=${year}`),
     create: (data: T.CreateChargeInput) => request<T.Charge>('/charges', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Omit<T.CreateChargeInput, 'propertyId'>>) =>
       request<T.Charge>(`/charges/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) => request<void>(`/charges/${id}`, { method: 'DELETE' }),
+    allocation: (year: number) => request<T.ChargeAllocation[]>(`/charges/allocation?year=${year}`),
   },
   regularizations: {
     list: (leaseId: string) => request<T.ChargeRegularization[]>(`/leases/${leaseId}/regularizations`),
@@ -67,7 +74,7 @@ export const api = {
     update: (id: string, data: Partial<import('../types').CreatePropertyInput>) =>
       request<import('../types').Property>(`/properties/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) => request<void>(`/properties/${id}`, { method: 'DELETE' }),
-    setOwners: (id: string, owners: { userId: string; share: number }[]) =>
+    setOwners: (id: string, owners: T.OwnerInput[]) =>
       request<import('../types').Ownership[]>(`/properties/${id}/owners`, { method: 'PUT', body: JSON.stringify({ owners }) }),
   },
   tenants: {

@@ -90,7 +90,7 @@ export const rentPaymentsService = {
     }
     const { lease } = payment
     const pdf = await renderReceiptPdf({
-      landlords: await landlordsFor(lease.property.ownerships),
+      landlords: await landlordsFor(lease.property.ownerships, payment.periodStart),
       tenantName: `${lease.tenant.firstName} ${lease.tenant.lastName}`,
       propertyAddress: lease.property.address,
       propertyZipCode: lease.property.zipCode,
