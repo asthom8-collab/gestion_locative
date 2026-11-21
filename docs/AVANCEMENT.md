@@ -6,9 +6,8 @@
 ## ▶ Reprise (à lire en premier) — état au 2026-11-21
 
 ### Où en est le code
-- `main` contient la phase 2, la refonte du front et le multipropriétaires (validés à la main par Thomas le 2026-11-21).
-- Branches `sauvegarde/*` (locales) : anciennes branches d'avant la réécriture, avec des détails privés. **Ne jamais pousser** ; à supprimer quand Thomas est d'accord.
-- `npm run verify` passe : 70 tests API, 48 tests front.
+- `main` contient la phase 2, la refonte du front, le multipropriétaires et la phase 4 (validés à la main par Thomas le 2026-11-21).
+- `npm run verify` passe : 91 tests API, 60 tests front.
 
 ### Comment relancer l'environnement de test à distance
 Thomas est souvent en SSH, accès par Tailscale :
@@ -23,9 +22,8 @@ Les conteneurs (port 5175) sont encore en version d'avant la phase 2 (blocage Ap
 ils ont besoin de `SESSION_SECRET` dans le `.env` de la racine (déjà ajouté sur cette machine).
 
 ### Prochaines étapes, dans l'ordre
-0. Phase 4 sur la branche locale `phase4-charges-irl` : test par Thomas (section Phase 4), puis fusion dans `main`.
+0. Phase 4 bis sur la branche locale `phase4b-notifications` (section Phase 4 bis).
 1. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, puis `docker compose up -d --build`), avec `SESSION_SECRET`.
-2. Supprimer les branches `sauvegarde/*` (accord de Thomas).
 3. Suite de la feuille de route : phase 3 (rapprochement bancaire) ou phase 4 (charges, IRL), en gardant en tête la
    répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1). Écrans de la maquette pas encore faits :
    Paiements, Synchro bancaire, Impôts, Interventions, Documents, États des lieux, dossier locataire.
@@ -77,7 +75,7 @@ ils ont besoin de `SESSION_SECRET` dans le `.env` de la racine (déjà ajouté s
 
 > La numérotation des phases et des US vient des commentaires du schéma. À confirmer ou compléter avec Thomas (l'historique de la conversation précédente n'est pas disponible).
 
-## Phase 4 (charges et IRL) : en cours (branche `phase4-charges-irl`)
+## Phase 4 (charges et IRL) : livrée sur `main` (2026-11-21)
 
 Choix retenus (Claude, à valider par Thomas) :
 - **IRL** : indices saisis à la main (table `IrlIndex`, commune à tous ; pas de valeurs inventées). Révision une fois par an,
@@ -99,9 +97,7 @@ Avancement :
   modifiable dans le bail), page **Charges** (menu Finances), section **Indices IRL** dans Paramètres ; l'alerte de révision
   du tableau de bord disparaît une fois la révision appliquée. Test de contrat étendu. `npm run verify` : 91 tests API, 60 front.
 - [x] Vérifié sur l'API de dev (lectures) : le bail du seed (IRL T2 2023, jamais révisé) propose une révision dès maintenant avec l'indice T2 2026, à saisir.
-- [ ] **Test par Thomas** : saisir un indice IRL (Paramètres ou depuis la fenêtre de révision), réviser un loyer, ouvrir l'avis PDF
-  et le lien messagerie, annuler la révision ; saisir des charges (page Charges), régulariser un bail, ouvrir le décompte PDF.
-- [ ] Puis fusion dans `main` et push.
+- [x] **Test par Thomas** (2026-11-21) : « la révision du loyer fonctionne très bien », charges et régularisation aussi. Fusionnée dans `main`.
 
 ## Phase 2 (loyers et quittances) : livrée sur `main` (2026-11-20)
 
@@ -168,6 +164,7 @@ colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locata
 ## Journal
 
 ### 2026-11-21
+- Phase 4 validée par Thomas et fusionnée dans `main`. Nouvelles demandes : notifier les propriétaires avant l'anniversaire des baux (appli, e-mail, téléphone) et saisir les charges par trimestre, avec des quotes-parts datées (changement de propriétaire en cours d'année).
 - Phase 4 (charges, IRL) développée sur `phase4-charges-irl` (voir la section Phase 4). Bug évité grâce aux tests : la révision prenait l'indice le plus récent saisi, même publié après la date d'effet.
 - Tests à la main par Thomas (connexion, Paramètres, copropriété, second compte, quittance à deux signatures, écrans de la refonte) : « tout fonctionne super bien ». `multi-proprietaires` fusionnée dans `main` (fast-forward) et poussée.
 - Multipropriétaires développé (voir la section dédiée). 70 tests API, 48 tests front.
