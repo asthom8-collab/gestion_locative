@@ -93,7 +93,7 @@ Choix retenus (Claude, à valider par Thomas) :
 Avancement :
 - [x] Migration `20261121150000_charges_irl` (appliquée sur la base de dev) ; `lib/period.ts` : `rentAt`, `occupiedDaysInYear`, `addOneYear`.
 - [x] `findLeasesCovering` inclut les révisions (génération des échéances au bon loyer).
-- [ ] API : routes `/api/irl`, `/api/charges`, `/api/leases/:id/revisions[/preview|/:rid/letter]`, `/api/leases/:id/regularizations[/preview|/:rid/statement]` + tests.
+- [x] API : routes `/api/irl` (GET, PUT), `/api/charges` (CRUD), `/api/leases/:id/revisions[/preview?date|/:rid/letter]`, `/api/leases/:id/regularizations[/preview?year|/:rid/statement]` ; 90 tests API. Indice retenu : le plus récent du trimestre **publié à la date d'effet** (INSEE ≈ le 15 du mois suivant le trimestre, `lastPublishedYear`). PDF vérifiés à l'œil.
 - [ ] Front (cartes, page Charges, Paramètres) + tests ; ARCHITECTURE.md ; `npm run verify` ; test par Thomas.
 
 ## Phase 2 (loyers et quittances) : livrée sur `main` (2026-11-20)

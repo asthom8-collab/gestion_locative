@@ -2,7 +2,7 @@ import PDFDocument from 'pdfkit'
 
 export type ReceiptData = {
   /** signature : image PNG ou JPEG de la signature du bailleur, apposée sous son nom */
-  landlords: { name: string; address: string; zipCode: string; city: string; signature?: Buffer }[]
+  landlords: Landlord[]
   tenantName: string
   propertyAddress: string
   propertyZipCode: string
@@ -16,13 +16,7 @@ export type ReceiptData = {
   issuedAt: Date
 }
 
-// Les polices standard du PDF (WinAnsi) n'ont pas les espaces fines insécables de Intl
-const clean = (s: string) => s.replace(/[  ]/g, ' ')
-const eur = (n: number) =>
-  clean(new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n))
-const day = (d: Date) => clean(d.toLocaleDateString('fr-FR', { timeZone: 'UTC' }))
-const monthLabel = (d: Date) =>
-  d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+import { day, eur, monthLabel, signatureBlock, Landlord } from './pdfCommon'
 
 /** Quittance de loyer (art. 21 de la loi n° 89-462 du 6 juillet 1989). */
 export function renderReceiptPdf(data: ReceiptData): Promise<Buffer> {
@@ -85,25 +79,7 @@ export function renderReceiptPdf(data: ReceiptData): Promise<Buffer> {
     doc.text(`Fait à ${first.city}, le ${day(data.issuedAt)}`, x)
     doc.moveDown(0.8)
 
-    // Une colonne par bailleur (trois par ligne au plus) : nom, puis signature ou espace pour signer
-    const perRow = Math.min(3, data.landlords.length)
-    const colWidth = width / perRow
-    const sigHeight = 55
-    for (let i = 0; i < data.landlords.length; i += perRow) {
-      const top = doc.y
-      data.landlords.slice(i, i + perRow).forEach((l, j) => {
-        const cx = x + j * colWidth
-        doc.font('Helvetica').fontSize(10).text(l.name, cx, top, { width: colWidth - 10 })
-        if (l.signature) {
-          try {
-            doc.image(l.signature, cx, top + 16, { fit: [Math.min(170, colWidth - 10), sigHeight] })
-          } catch {
-            // Image illisible : on laisse l'espace vide pour une signature manuscrite
-          }
-        }
-      })
-      doc.y = top + 16 + sigHeight + 10
-    }
+    signatureBlock(doc, data.landlords, x, width)
     doc.x = x
     doc.moveDown(1)
 

@@ -2,7 +2,7 @@ import { PaymentStatus } from '@prisma/client'
 import { AppError } from '../middlewares/errorHandler'
 import { computeMonthlyDue, dueDate, monthBounds, round2, toUtcDay } from '../lib/period'
 import { renderReceiptPdf } from '../lib/receiptPdf'
-import { readFile } from 'node:fs/promises'
+import { landlordsFor } from './landlords'
 import { removeFile, saveFile, storagePath } from '../lib/storage'
 import { ListFilter, RentPaymentWithLease, rentPaymentsRepository } from '../repositories/rentPayments'
 
@@ -89,24 +89,8 @@ export const rentPaymentsService = {
       throw new AppError(409, 'Une quittance ne peut être établie que pour un loyer payé en totalité')
     }
     const { lease } = payment
-    const owners = lease.property.ownerships.map((o) => o.user)
-    if (!owners.length) throw new AppError(409, 'Ce bien n’a pas de propriétaire')
-    const incomplete = owners.find((u) => !u.address || !u.zipCode || !u.city)
-    if (incomplete) {
-      throw new AppError(409, `Adresse du bailleur manquante (${incomplete.firstName} ${incomplete.lastName}) : complétez-la dans Paramètres`)
-    }
-
-    // Signatures des bailleurs (image facultative ; fichier manquant = pas de signature)
-    const signatures = await Promise.all(owners.map((u) =>
-      u.signaturePath ? readFile(storagePath(u.signaturePath)).catch(() => undefined) : Promise.resolve(undefined)))
     const pdf = await renderReceiptPdf({
-      landlords: owners.map((u, i) => ({
-        signature: signatures[i],
-        name: `${u.firstName} ${u.lastName}`,
-        address: u.address!,
-        zipCode: u.zipCode!,
-        city: u.city!,
-      })),
+      landlords: await landlordsFor(lease.property.ownerships),
       tenantName: `${lease.tenant.firstName} ${lease.tenant.lastName}`,
       propertyAddress: lease.property.address,
       propertyZipCode: lease.property.zipCode,

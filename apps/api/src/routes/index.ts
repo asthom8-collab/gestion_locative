@@ -6,6 +6,9 @@ import rentPaymentsRouter from './rentPayments'
 import meRouter from './me'
 import authRouter from './auth'
 import usersRouter from './users'
+import irlRouter from './irl'
+import chargesRouter from './charges'
+import leaseDocumentsRouter from './leaseDocuments'
 import { requireAuth } from '../middlewares/auth'
 
 const router = Router()
@@ -16,9 +19,12 @@ router.use(requireAuth)
 
 router.use('/properties', propertiesRouter)
 router.use('/tenants', tenantsRouter)
+router.use('/leases/:id', leaseDocumentsRouter)
 router.use('/leases', leasesRouter)
 router.use('/rent-payments', rentPaymentsRouter)
 router.use('/me', meRouter)
 router.use('/users', usersRouter)
+router.use('/irl', irlRouter)
+router.use('/charges', chargesRouter)
 
 export default router
