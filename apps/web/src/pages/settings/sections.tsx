@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useMe, useSetSignature, useDeleteSignature } from '../../hooks/useMe'
 import { useDirectory, useCreateUser, useResetPassword } from '../../hooks/useUsers'
 import { useActionError } from '../../hooks/useActionError'
+import { useIrlIndexes, useSaveIrl } from '../../hooks/useRevisions'
 import { api } from '../../api/client'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -161,6 +162,49 @@ export function AccountsCard() {
           <p className="text-xs text-slate-500 -mt-1 mb-3">Ses sessions ouvertes seront fermées, et il devra choisir un nouveau mot de passe à la connexion.</p>
           <div className="flex justify-end"><Button onClick={saveReset} disabled={resetM.isPending}><Check size={16} />Réinitialiser</Button></div>
         </Modal>
+      )}
+    </Card>
+  )
+}
+
+/** Indices de référence des loyers (INSEE), saisis à la main et communs à tous les comptes. */
+export function IrlCard() {
+  const { data: indexes = [] } = useIrlIndexes()
+  const saveM = useSaveIrl()
+  const { error, run, clear } = useActionError()
+  const now = new Date()
+  const [form, setForm] = useState({ quarter: 2, year: now.getFullYear(), value: '' })
+  const save = async () => {
+    if (await run(() => saveM.mutateAsync({ quarter: form.quarter, year: form.year, value: Number(form.value) }))) setForm({ ...form, value: '' })
+  }
+  return (
+    <Card className="p-5">
+      <h3 className="font-semibold tracking-tight mb-1">Indices de référence des loyers (IRL)</h3>
+      <p className="text-xs text-slate-500 mb-3">Valeurs publiées par l'INSEE chaque trimestre, utilisées pour réviser les loyers. Saisir à nouveau un trimestre corrige sa valeur.</p>
+      <ErrorAlert message={error} onClose={clear} />
+      <div className="flex flex-wrap gap-2 items-end mb-3">
+        <label className="text-xs text-slate-500">Trimestre
+          <select aria-label="Trimestre" className={`${inputCls} mt-1`} value={form.quarter} onChange={e => setForm({ ...form, quarter: Number(e.target.value) })}>
+            {[1, 2, 3, 4].map(q => <option key={q} value={q}>T{q}</option>)}
+          </select>
+        </label>
+        <label className="text-xs text-slate-500">Année
+          <input aria-label="Année" type="number" className={`${inputCls} mt-1 w-24`} value={form.year} onChange={e => setForm({ ...form, year: Number(e.target.value) })} />
+        </label>
+        <label className="text-xs text-slate-500">Valeur
+          <input aria-label="Valeur" type="number" step="0.01" className={`${inputCls} mt-1 w-28`} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
+        </label>
+        <Button onClick={save} disabled={!form.value || saveM.isPending}>Enregistrer</Button>
+      </div>
+      {indexes.length === 0 ? <p className="text-sm text-slate-400">Aucun indice saisi.</p> : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+          {indexes.map(i => (
+            <div key={i.id} className="rounded-lg border border-slate-200 px-3 py-2 flex justify-between">
+              <span className="text-slate-500">T{i.quarter} {i.year}</span>
+              <span className="font-medium">{i.value.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}</span>
+            </div>
+          ))}
+        </div>
       )}
     </Card>
   )

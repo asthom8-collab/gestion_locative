@@ -12,6 +12,7 @@ import { Tenants } from './pages/Tenants'
 import { Leases } from './pages/Leases'
 import { LeaseDetail } from './pages/LeaseDetail'
 import { Rents } from './pages/Rents'
+import { Charges } from './pages/Charges'
 import { Settings } from './pages/Settings'
 
 export function createQueryClient() {
@@ -46,6 +47,7 @@ export default function App() {
                 <Route path="/leases" element={<Leases />} />
                 <Route path="/leases/:id" element={<LeaseDetail />} />
                 <Route path="/rents" element={<Rents />} />
+                <Route path="/charges" element={<Charges />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>
             </main>

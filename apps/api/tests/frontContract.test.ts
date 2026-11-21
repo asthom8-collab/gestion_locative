@@ -76,4 +76,30 @@ describe('contrat API ↔ front', () => {
     expect(me).not.toHaveProperty('signaturePath')
     expect(me).not.toHaveProperty('passwordHash')
   })
+
+  it('phase 4 : révision IRL, charges et régularisation (types de apps/web/src/types, section Phase 4)', async () => {
+    const p = await createProperty()
+    const t = await createTenant()
+    const lease = await createLease(p.id, t.id, { startDate: '2025-01-15T00:00:00.000Z', irlReference: 140, irlQuarter: 2, irlYear: 2024 })
+    await api().put('/api/irl').send({ quarter: 2, year: 2025, value: 145.6 }).expect(200)
+    expect(keys((await api().get('/api/irl')).body[0])).toEqual(expect.arrayContaining(['id', 'quarter', 'year', 'value']))
+
+    const preview = (await api().get(`/api/leases/${lease.id}/revisions/preview?date=2026-01-15T00:00:00.000Z`).expect(200)).body
+    expect(keys(preview)).toEqual(['computedRent', 'currentRent', 'effectiveDate', 'expectedIndex', 'lastRevisionDate', 'leaseId', 'missing', 'newIndex', 'nextRevisionDate', 'reference'])
+    expect(keys(preview.newIndex)).toEqual(['quarter', 'value', 'year'])
+    await api().post(`/api/leases/${lease.id}/revisions`).send({ effectiveDate: '2026-01-15T00:00:00.000Z' }).expect(201)
+    const [rev] = (await api().get(`/api/leases/${lease.id}/revisions`)).body
+    expect(keys(rev)).toEqual(expect.arrayContaining(['id', 'leaseId', 'effectiveDate', 'previousRent', 'newRent', 'previousIrlValue', 'previousIrlQuarter', 'previousIrlYear', 'newIrlValue', 'newIrlYear', 'createdAt']))
+    const [listed] = (await api().get('/api/leases')).body
+    expect(listed.rentRevisions).toEqual([{ effectiveDate: '2026-01-15T00:00:00.000Z' }])
+
+    const charge = (await api().post('/api/charges').send({ propertyId: p.id, year: 2025, label: 'Eau', amount: 300 }).expect(201)).body
+    expect(keys(charge)).toEqual(expect.arrayContaining(['id', 'propertyId', 'year', 'label', 'amount']))
+    const reg = (await api().get(`/api/leases/${lease.id}/regularizations/preview?year=2025`).expect(200)).body
+    expect(keys(reg)).toEqual(['charges', 'daysInYear', 'existing', 'missingMonths', 'occupiedDays', 'suggestedMonthlyCharges', 'totalCharged', 'totalCharges', 'totalReal', 'year', 'balance'].sort())
+    expect(keys(reg.charges[0])).toEqual(['amount', 'id', 'label', 'share'])
+    await api().post(`/api/leases/${lease.id}/regularizations`).send({ year: 2025 }).expect(201)
+    const [saved] = (await api().get(`/api/leases/${lease.id}/regularizations`)).body
+    expect(keys(saved)).toEqual(expect.arrayContaining(['id', 'leaseId', 'year', 'occupiedDays', 'daysInYear', 'totalCharged', 'totalReal', 'balance', 'sentAt', 'createdAt']))
+  })
 })

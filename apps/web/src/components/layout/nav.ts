@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { LayoutDashboard, Building2, Users, FileSignature, Receipt, UserCircle2 } from '../icons'
+import { LayoutDashboard, Building2, Users, FileSignature, Receipt, UserCircle2, Wallet } from '../icons'
 
 export interface NavItem { to: string; label: string; short?: string; Icon: LucideIcon; end?: boolean }
 
@@ -15,7 +15,13 @@ export const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
       { to: '/leases', label: 'Locations', Icon: FileSignature },
     ],
   },
-  { label: 'Finances', items: [{ to: '/rents', label: 'Loyers et quittances', short: 'Loyers', Icon: Receipt }] },
+  {
+    label: 'Finances',
+    items: [
+      { to: '/rents', label: 'Loyers et quittances', short: 'Loyers', Icon: Receipt },
+      { to: '/charges', label: 'Charges', Icon: Wallet },
+    ],
+  },
 ]
 
 const ALL = NAV_GROUPS.flatMap(g => g.items)

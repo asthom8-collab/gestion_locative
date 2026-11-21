@@ -77,6 +77,14 @@ middlewares/   validate, errorHandler (AppError → JSON { error }, zod → 400 
 | `GET /api/users` | Annuaire (id, nom, e-mail) pour choisir les copropriétaires |
 | `POST /api/users`, `PUT /api/users/:id/password` | Administrateur : crée un compte, réinitialise un mot de passe (provisoire) |
 | `PUT /api/properties/:id/owners` | Copropriétaires du bien et quotes-parts |
+| `GET /api/irl`, `PUT /api/irl {quarter, year, value}` | Indices IRL (communs à tous les comptes) ; PUT crée ou corrige |
+| `GET /api/charges?year&propertyId`, `POST /api/charges`, `PATCH/DELETE /api/charges/:id` | Charges récupérables réelles d'un bien pour une année |
+| `GET /api/leases/:id/revisions`, `GET …/revisions/preview[?date]` | Historique des révisions ; proposition (date, indices, loyer maximum, ce qui manque) |
+| `POST /api/leases/:id/revisions {effectiveDate, newRent?}`, `DELETE …/revisions/:rid` | Applique une révision ; annule la dernière |
+| `GET /api/leases/:id/revisions/:rid/letter[?download]` | Avis de révision PDF (généré à la volée) |
+| `GET /api/leases/:id/regularizations`, `GET …/regularizations/preview?year` | Régularisations enregistrées ; calcul pour une année |
+| `POST /api/leases/:id/regularizations {year}`, `DELETE …/regularizations/:rid` | Enregistre (une par an) ou supprime une régularisation |
+| `GET /api/leases/:id/regularizations/:rid/statement[?download]` | Décompte de régularisation PDF (généré à la volée) |
 
 Codes d'erreur : 400 (validation), 401 (pas connecté), 403 (administrateur requis, ou mot de passe provisoire à changer), 404 (introuvable,
 ou appartenant à un autre propriétaire), 409 (conflit métier : bail actif en double, suppression avec historique,
@@ -117,6 +125,7 @@ erDiagram
   BankTransaction |o--o| RentPayment : "rapprochement"
   Property ||--o{ Charge : ""
   Lease ||--o{ ChargeRegularization : ""
+  Lease ||--o{ RentRevision : ""
   Property ||--o{ LmnpEntry : ""
   Lease ||--o{ Document : ""
   Tenant ||--o{ Document : ""
@@ -210,9 +219,22 @@ erDiagram
   ChargeRegularization {
     string leaseId FK
     int year
+    int occupiedDays
+    int daysInYear
     float totalCharged
     float totalReal
     float balance
+  }
+  RentRevision {
+    string leaseId FK
+    datetime effectiveDate
+    float previousRent
+    float newRent
+    float previousIrlValue
+    int previousIrlQuarter
+    int previousIrlYear
+    float newIrlValue
+    int newIrlYear
   }
   IrlIndex {
     int quarter
@@ -266,8 +288,9 @@ erDiagram
 | **RentPayment** | Échéance mensuelle et encaissement. Unique par `(leaseId, periodYear, periodMonth)` | 2 | oui |
 | **Receipt** | Quittance PDF d'une échéance payée en entier | 2 | oui |
 | BankTransaction | Opération bancaire importée, rapprochée d'une échéance | 3 | non |
-| Charge, ChargeRegularization | Charges réelles par bien, régularisation annuelle par bail | 4 | non |
-| IrlIndex | Indices IRL de l'INSEE | 4 | non |
+| Charge, ChargeRegularization | Charges réelles par bien, régularisation annuelle par bail (unique par bail et par année) | 4 | oui |
+| RentRevision | Historique des révisions IRL d'un bail (valeurs avant/après) | 4 | oui |
+| IrlIndex | Indices IRL de l'INSEE, saisis à la main | 4 | oui |
 | LmnpEntry | Écritures comptables LMNP | 5 | non |
 | Document | Pièces jointes (bail, locataire) | US-04 | non |
 | Inventory, InventoryRoom, InventoryElement, InventoryPhoto | États des lieux d'entrée et de sortie | US-22 à 25 | non |
@@ -302,6 +325,19 @@ Il faudra une migration au moment de faire l'écran concerné :
   signature ne modifie pas les quittances déjà établies.
 - **Copropriété** : `PUT /properties/:id/owners` remplace la liste complète ; quotes-parts > 0 dont la somme vaut
   100 % ; on ne peut pas se retirer soi-même. Un nouveau bien appartient à 100 % à son créateur.
+- **Révision IRL** (art. 17-1 de la loi de 1989) : une fois par an au plus, à partir de l'anniversaire du bail (ou de
+  la dernière révision). Indice retenu : le plus récent du trimestre de référence **publié à la date d'effet**
+  (publication INSEE estimée au 15 du mois qui suit le trimestre, `lastPublishedYear`). Loyer maximum =
+  loyer × nouvel IRL / IRL de référence, arrondi au centime ; on peut appliquer moins. Le bail prend le nouveau loyer
+  et le nouvel IRL de référence. Le loyer d'une période se calcule jour par jour d'après l'historique (`rentAt`) : une
+  révision en cours de mois est proratisée. Les échéances non payées touchées sont recalculées (aussi à l'annulation,
+  possible pour la dernière révision seulement).
+- **Régularisation des charges** (art. 23) : part du locataire = charges réelles du bien de l'année × jours occupés /
+  jours de l'année (la vacance reste au bailleur) ; moins les provisions des échéances générées de l'année (les mois
+  sans échéance sont signalés) ; solde > 0 à réclamer, < 0 à rembourser. Une régularisation par bail et par année ; on
+  la supprime pour la refaire. Provision mensuelle suggérée = charges de l'année / 12.
+- **Courriers PDF** (avis de révision, décompte) : générés à la volée, non stockés, avec les bailleurs et leurs
+  signatures comme la quittance (`services/landlords.ts`, `lib/pdfCommon.ts`).
 - **Dates** : stockées en UTC à minuit. Les calculs de période se font en UTC des deux côtés.
 
 ### 5.1 Conséquences prévues de la copropriété (phases suivantes)
@@ -338,6 +374,7 @@ src/components/icons.tsx   point d'entrée unique des icônes lucide-react
 | `/leases` | Locations (baux) : liste, création |
 | `/leases/:id` | Fiche du bail : conditions, modification, résiliation, échéances et quittances du bail |
 | `/rents?year&month` | Loyers : génération, encaissements, quittances |
+| `/charges?year` | Charges récupérables par bien et par année, liens vers la régularisation de chaque bail |
 | `/settings` | Paramètres : identité et adresse, signature, mot de passe, comptes (administrateur) |
 
 **Connexion** : `components/auth/AuthGate` n'affiche l'application qu'à un utilisateur connecté ; sinon l'écran de

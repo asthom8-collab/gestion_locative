@@ -1,3 +1,5 @@
+import type * as T from '../types'
+
 const BASE = '/api'
 
 /** Erreur renvoyée par l'API, avec son code HTTP (401 = non connecté, 403 = interdit…). */
@@ -25,6 +27,38 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  irl: {
+    list: () => request<T.IrlIndex[]>('/irl'),
+    save: (data: { quarter: number; year: number; value: number }) =>
+      request<T.IrlIndex>('/irl', { method: 'PUT', body: JSON.stringify(data) }),
+  },
+  revisions: {
+    list: (leaseId: string) => request<T.RentRevision[]>(`/leases/${leaseId}/revisions`),
+    preview: (leaseId: string, date?: string) =>
+      request<T.RevisionPreview>(`/leases/${leaseId}/revisions/preview${date ? `?date=${encodeURIComponent(date)}` : ''}`),
+    apply: (leaseId: string, data: { effectiveDate: string; newRent?: number }) =>
+      request<T.RentRevision>(`/leases/${leaseId}/revisions`, { method: 'POST', body: JSON.stringify(data) }),
+    cancel: (leaseId: string, id: string) => request<void>(`/leases/${leaseId}/revisions/${id}`, { method: 'DELETE' }),
+    letterUrl: (leaseId: string, id: string, download = false) =>
+      `${BASE}/leases/${leaseId}/revisions/${id}/letter${download ? '?download' : ''}`,
+  },
+  charges: {
+    list: (year: number) => request<T.Charge[]>(`/charges?year=${year}`),
+    create: (data: T.CreateChargeInput) => request<T.Charge>('/charges', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Omit<T.CreateChargeInput, 'propertyId'>>) =>
+      request<T.Charge>(`/charges/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: string) => request<void>(`/charges/${id}`, { method: 'DELETE' }),
+  },
+  regularizations: {
+    list: (leaseId: string) => request<T.ChargeRegularization[]>(`/leases/${leaseId}/regularizations`),
+    preview: (leaseId: string, year: number) =>
+      request<T.RegularizationPreview>(`/leases/${leaseId}/regularizations/preview?year=${year}`),
+    create: (leaseId: string, year: number) =>
+      request<T.ChargeRegularization>(`/leases/${leaseId}/regularizations`, { method: 'POST', body: JSON.stringify({ year }) }),
+    delete: (leaseId: string, id: string) => request<void>(`/leases/${leaseId}/regularizations/${id}`, { method: 'DELETE' }),
+    statementUrl: (leaseId: string, id: string, download = false) =>
+      `${BASE}/leases/${leaseId}/regularizations/${id}/statement${download ? '?download' : ''}`,
+  },
   properties: {
     list: () => request<import('../types').Property[]>('/properties'),
     get: (id: string) => request<import('../types').Property>(`/properties/${id}`),

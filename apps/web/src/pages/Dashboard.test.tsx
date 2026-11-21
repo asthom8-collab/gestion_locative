@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
-import { Dashboard, coversMonth } from './Dashboard'
+import { Dashboard, coversMonth, buildAlerts } from './Dashboard'
+import type { Lease } from '../types'
 import { mockApi, renderWithProviders, property, lease } from '../test/utils'
 
 const now = new Date()
@@ -63,4 +64,22 @@ describe('coversMonth (même règle que la génération des échéances côté A
   it('bail résilié dans le mois : dernier mois proratisé', () => expect(coversMonth(l('2025-01-01T00:00:00.000Z', '2026-11-10T00:00:00.000Z', false), nov)).toBe(true))
   it('bail encore actif mais dont la fin est passée', () => expect(coversMonth(l('2025-01-01T00:00:00.000Z', '2026-10-31T00:00:00.000Z'), nov)).toBe(false))
   it('bail inactif sans date de fin', () => expect(coversMonth(l('2025-01-01T00:00:00.000Z', null, false), nov)).toBe(false))
+})
+
+describe('alerte de révision du loyer', () => {
+  const now = new Date(2026, 10, 21) // 21 novembre 2026, anniversaire le 1er janvier
+  const cur = { year: 2026, month: 11 }
+  const revisionAlerts = (over: Record<string, unknown>) =>
+    buildAlerts([lease(over) as unknown as Lease], [], now, cur).filter(a => a.title.startsWith('Révision du loyer'))
+
+  it('rappelle la révision à moins de 90 jours de l’anniversaire', () => {
+    const [a] = revisionAlerts({})
+    expect(a.action).toEqual({ label: 'Réviser le loyer', to: '/leases/l1' })
+  })
+  it('ne rappelle plus une révision déjà appliquée pour cet anniversaire', () => {
+    expect(revisionAlerts({ rentRevisions: [{ effectiveDate: '2027-01-01T00:00:00.000Z' }] })).toHaveLength(0)
+  })
+  it('rappelle encore si la dernière révision date de l’anniversaire précédent', () => {
+    expect(revisionAlerts({ rentRevisions: [{ effectiveDate: '2026-01-01T00:00:00.000Z' }] })).toHaveLength(1)
+  })
 })

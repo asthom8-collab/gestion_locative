@@ -10,14 +10,14 @@ const profile = {
 
 describe('page Paramètres', () => {
   it('charge le profil et enregistre l’adresse du bailleur', async () => {
-    const fetchMock = mockApi({ '/api/me': profile })
+    const fetchMock = mockApi({ '/api/me': profile, '/api/irl': [] })
     renderWithProviders(<Settings />)
 
     expect(await screen.findByDisplayValue('Thomas')).toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Adresse'), { target: { value: '5 place Bellecour' } })
     fireEvent.change(screen.getByLabelText('Code postal'), { target: { value: '69002' } })
     fireEvent.change(screen.getByLabelText('Ville'), { target: { value: 'Lyon' } })
-    fireEvent.click(screen.getByRole('button', { name: /Enregistrer/ }))
+    fireEvent.click(screen.getAllByRole('button', { name: /Enregistrer/ })[0])
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith('/api/me', expect.objectContaining({
@@ -61,5 +61,18 @@ describe('page Paramètres : comptes et signature', () => {
     fireEvent.change(input, { target: { files: [new File(['<svg/>'], 'sig.svg', { type: 'image/svg+xml' })] } })
     expect(await screen.findByRole('alert')).toHaveTextContent('PNG ou JPEG')
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes('signature'))).toBe(false)
+  })
+})
+
+describe('page Paramètres : indices IRL', () => {
+  it('liste les indices et en enregistre un', async () => {
+    const fetchMock = mockApi({ '/api/me': profile, '/api/irl': [{ id: 'i1', quarter: 2, year: 2025, value: 145.6 }], 'PUT /api/irl': { id: 'i2', quarter: 3, year: 2025, value: 146 } })
+    renderWithProviders(<Settings />)
+    expect(await screen.findByText('T2 2025')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Trimestre'), { target: { value: '3' } })
+    fireEvent.change(screen.getByLabelText('Année'), { target: { value: '2025' } })
+    fireEvent.change(screen.getByLabelText('Valeur'), { target: { value: '146' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Enregistrer' }).slice(-1)[0])
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/irl', expect.objectContaining({ method: 'PUT', body: JSON.stringify({ quarter: 3, year: 2025, value: 146 }) })))
   })
 })

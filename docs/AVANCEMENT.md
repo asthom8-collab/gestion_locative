@@ -23,6 +23,7 @@ Les conteneurs (port 5175) sont encore en version d'avant la phase 2 (blocage Ap
 ils ont besoin de `SESSION_SECRET` dans le `.env` de la racine (déjà ajouté sur cette machine).
 
 ### Prochaines étapes, dans l'ordre
+0. Phase 4 sur la branche locale `phase4-charges-irl` : test par Thomas (section Phase 4), puis fusion dans `main`.
 1. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, puis `docker compose up -d --build`), avec `SESSION_SECRET`.
 2. Supprimer les branches `sauvegarde/*` (accord de Thomas).
 3. Suite de la feuille de route : phase 3 (rapprochement bancaire) ou phase 4 (charges, IRL), en gardant en tête la
@@ -94,7 +95,13 @@ Avancement :
 - [x] Migration `20261121150000_charges_irl` (appliquée sur la base de dev) ; `lib/period.ts` : `rentAt`, `occupiedDaysInYear`, `addOneYear`.
 - [x] `findLeasesCovering` inclut les révisions (génération des échéances au bon loyer).
 - [x] API : routes `/api/irl` (GET, PUT), `/api/charges` (CRUD), `/api/leases/:id/revisions[/preview?date|/:rid/letter]`, `/api/leases/:id/regularizations[/preview?year|/:rid/statement]` ; 90 tests API. Indice retenu : le plus récent du trimestre **publié à la date d'effet** (INSEE ≈ le 15 du mois suivant le trimestre, `lastPublishedYear`). PDF vérifiés à l'œil.
-- [ ] Front (cartes, page Charges, Paramètres) + tests ; ARCHITECTURE.md ; `npm run verify` ; test par Thomas.
+- [x] Front : cartes « Révision du loyer (IRL) » et « Régularisation des charges » dans la fiche du bail (IRL de référence
+  modifiable dans le bail), page **Charges** (menu Finances), section **Indices IRL** dans Paramètres ; l'alerte de révision
+  du tableau de bord disparaît une fois la révision appliquée. Test de contrat étendu. `npm run verify` : 91 tests API, 60 front.
+- [x] Vérifié sur l'API de dev (lectures) : le bail du seed (IRL T2 2023, jamais révisé) propose une révision dès maintenant avec l'indice T2 2026, à saisir.
+- [ ] **Test par Thomas** : saisir un indice IRL (Paramètres ou depuis la fenêtre de révision), réviser un loyer, ouvrir l'avis PDF
+  et le lien messagerie, annuler la révision ; saisir des charges (page Charges), régulariser un bail, ouvrir le décompte PDF.
+- [ ] Puis fusion dans `main` et push.
 
 ## Phase 2 (loyers et quittances) : livrée sur `main` (2026-11-20)
 
@@ -161,6 +168,7 @@ colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locata
 ## Journal
 
 ### 2026-11-21
+- Phase 4 (charges, IRL) développée sur `phase4-charges-irl` (voir la section Phase 4). Bug évité grâce aux tests : la révision prenait l'indice le plus récent saisi, même publié après la date d'effet.
 - Tests à la main par Thomas (connexion, Paramètres, copropriété, second compte, quittance à deux signatures, écrans de la refonte) : « tout fonctionne super bien ». `multi-proprietaires` fusionnée dans `main` (fast-forward) et poussée.
 - Multipropriétaires développé (voir la section dédiée). 70 tests API, 48 tests front.
 - Bug trouvé pendant le développement du front : une boucle infinie de requêtes quand la session est absente (la 401 du profil relançait le profil). Corrigé et couvert par les tests de l'écran de connexion.

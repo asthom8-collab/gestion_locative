@@ -21,6 +21,24 @@ const payment = (over: Record<string, unknown> = {}) => ({
   ...over,
 })
 
+const revisionPreview = (over: Record<string, unknown> = {}) => ({
+  leaseId: 'l1', currentRent: 800, nextRevisionDate: '2099-01-01T00:00:00.000Z', effectiveDate: '2027-01-01T00:00:00.000Z',
+  lastRevisionDate: null, missing: null, reference: { value: 140, quarter: 2, year: 2024 },
+  newIndex: { value: 145.6, quarter: 2, year: 2025 }, expectedIndex: { quarter: 2, year: 2025 }, computedRent: 832, ...over,
+})
+const regYear = new Date().getFullYear() - 1
+const regPreview = (over: Record<string, unknown> = {}) => ({
+  year: regYear, occupiedDays: 365, daysInYear: 365, charges: [{ id: 'c1', label: 'Eau', amount: 730, share: 730 }],
+  totalCharges: 730, totalReal: 730, totalCharged: 600, balance: 130, missingMonths: [], suggestedMonthlyCharges: 60.83, existing: null, ...over,
+})
+// Routes des cartes Révision et Régularisation
+const phase4 = (over: Record<string, unknown> = {}) => ({
+  '/api/leases/l1/revisions/preview': revisionPreview(),
+  '/api/leases/l1/revisions': [],
+  [`/api/leases/l1/regularizations/preview?year=${regYear}`]: regPreview(),
+  ...over,
+})
+
 const renderDetail = () =>
   renderWithProviders(<Routes><Route path="/leases/:id" element={<LeaseDetail />} /></Routes>, '/leases/l1')
 
@@ -50,6 +68,7 @@ describe('fiche du bail', () => {
     const fetchMock = mockApi({
       '/api/leases/l1': detail(),
       '/api/rent-payments?leaseId=l1': [],
+      ...phase4(),
       'POST /api/leases/l1/terminate': reply(400, { error: 'La date de fin ne peut pas précéder le début du bail' }),
     })
     renderDetail()
@@ -65,20 +84,85 @@ describe('fiche du bail', () => {
     const fetchMock = mockApi({
       '/api/leases/l1': detail(),
       '/api/rent-payments?leaseId=l1': [],
+      ...phase4(),
       'PATCH /api/leases/l1': detail({ rentAmount: 820 }),
     })
     renderDetail()
     fireEvent.click(await screen.findByLabelText('Modifier le bail'))
     fireEvent.change(screen.getByLabelText('Loyer hors charges (€)'), { target: { value: '820' } })
-    fireEvent.click(screen.getByRole('button', { name: /Enregistrer/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
     await waitFor(() => expect(screen.queryByText('Modifier le bail', { selector: 'h3' })).not.toBeInTheDocument())
     const call = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH')!
-    expect(JSON.parse(call[1]!.body as string)).toEqual({ type: 'UNFURNISHED', rentAmount: 820, chargesAmount: 50, rentDayOfMonth: 5 })
+    expect(JSON.parse(call[1]!.body as string)).toEqual({ type: 'UNFURNISHED', rentAmount: 820, chargesAmount: 50, rentDayOfMonth: 5, irlReference: 142.06, irlQuarter: 2, irlYear: 2024 })
   })
 
   it('affiche une erreur pour un bail inconnu', async () => {
     mockApi({ '/api/leases/l1': reply(404, { error: 'Bail introuvable' }), '/api/rent-payments?leaseId=l1': [] })
     renderDetail()
     expect(await screen.findByRole('alert')).toHaveTextContent('Bail introuvable')
+  })
+
+  it('révise le loyer : proposition, montant choisi, puis avis de révision', async () => {
+    const revision = { id: 'r1', leaseId: 'l1', effectiveDate: '2027-01-01T00:00:00.000Z', previousRent: 800, newRent: 830, previousIrlValue: 140, previousIrlQuarter: 2, previousIrlYear: 2024, newIrlValue: 145.6, newIrlYear: 2025, createdAt: '' }
+    const fetchMock = mockApi({ '/api/leases/l1': detail(), '/api/rent-payments?leaseId=l1': [], ...phase4(), 'POST /api/leases/l1/revisions': revision })
+    renderDetail()
+    expect(await screen.findByText(/Prochaine révision possible/)).toHaveTextContent('01 janvier 2099')
+    fireEvent.click(screen.getByRole('button', { name: 'Réviser le loyer' }))
+    expect(await screen.findByText('Loyer révisé (maximum)')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Nouveau loyer hors charges (€)'), { target: { value: '830' } })
+    fireEvent.click(screen.getByRole('button', { name: /Appliquer la révision/ }))
+    expect(await screen.findByRole('link', { name: /Avis de révision/ })).toHaveAttribute('href', '/api/leases/l1/revisions/r1/letter')
+    expect(screen.getByRole('link', { name: /messagerie/ }).getAttribute('href')).toMatch(/^mailto:jean@example\.com\?subject=/)
+    const call = fetchMock.mock.calls.find(([url, init]) => url === '/api/leases/l1/revisions' && init?.method === 'POST')!
+    expect(JSON.parse(call[1]!.body as string)).toEqual({ effectiveDate: '2027-01-01T00:00:00.000Z', newRent: 830 })
+  })
+
+  it('révision en retard : possible dès maintenant', async () => {
+    mockApi({ '/api/leases/l1': detail(), '/api/rent-payments?leaseId=l1': [], ...phase4({ '/api/leases/l1/revisions/preview': revisionPreview({ nextRevisionDate: '2024-07-01T00:00:00.000Z' }) }) })
+    renderDetail()
+    expect(await screen.findByText(/dès maintenant/)).toBeInTheDocument()
+  })
+
+  it('révision : propose de saisir l’indice manquant', async () => {
+    const fetchMock = mockApi({
+      '/api/leases/l1': detail(), '/api/rent-payments?leaseId=l1': [],
+      ...phase4({ '/api/leases/l1/revisions/preview': revisionPreview({ missing: 'INDEX', newIndex: null, computedRent: null }) }),
+      'PUT /api/irl': { id: 'i1', quarter: 2, year: 2025, value: 145.6 },
+    })
+    renderDetail()
+    fireEvent.click(await screen.findByRole('button', { name: 'Réviser le loyer' }))
+    fireEvent.change(await screen.findByLabelText('IRL T2 2025'), { target: { value: '145.6' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => u === '/api/irl' && i?.method === 'PUT')).toBe(true))
+    const call = fetchMock.mock.calls.find(([u, i]) => u === '/api/irl' && i?.method === 'PUT')!
+    expect(JSON.parse(call[1]!.body as string)).toEqual({ quarter: 2, year: 2025, value: 145.6 })
+  })
+
+  it('révision impossible sans IRL de référence : renvoie vers la modification du bail', async () => {
+    mockApi({ '/api/leases/l1': detail(), '/api/rent-payments?leaseId=l1': [], ...phase4({ '/api/leases/l1/revisions/preview': revisionPreview({ missing: 'REFERENCE', reference: null }) }) })
+    renderDetail()
+    fireEvent.click(await screen.findByRole('button', { name: 'Modifier le bail' }))
+    expect(await screen.findByLabelText('IRL de référence')).toHaveValue(142.06)
+  })
+
+  it('régularisation des charges : affiche le solde et l’enregistre', async () => {
+    const fetchMock = mockApi({
+      '/api/leases/l1': detail(), '/api/rent-payments?leaseId=l1': [], ...phase4(),
+      'POST /api/leases/l1/regularizations': { id: 'g1', year: regYear },
+    })
+    renderDetail()
+    expect(await screen.findByText('Reste à payer par le locataire')).toBeInTheDocument()
+    expect(screen.getByText(/elle serait de 60,83/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Enregistrer la régularisation/ }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => u === '/api/leases/l1/regularizations' && i?.method === 'POST')).toBe(true))
+  })
+
+  it('régularisation déjà enregistrée : lien vers le décompte', async () => {
+    mockApi({
+      '/api/leases/l1': detail(), '/api/rent-payments?leaseId=l1': [],
+      ...phase4({ [`/api/leases/l1/regularizations/preview?year=${regYear}`]: regPreview({ existing: { id: 'g1', leaseId: 'l1', year: regYear, occupiedDays: 365, daysInYear: 365, totalCharged: 600, totalReal: 730, balance: 130, sentAt: null, createdAt: '2026-02-01T00:00:00.000Z' } }) }),
+    })
+    renderDetail()
+    expect(await screen.findByRole('link', { name: /Décompte/ })).toHaveAttribute('href', '/api/leases/l1/regularizations/g1/statement')
   })
 })

@@ -12,6 +12,8 @@ import { Field, inputCls } from '../components/ui/Field'
 import { ErrorAlert } from '../components/ui/ErrorAlert'
 import { PaymentStatusBadge } from '../components/ui/PaymentStatusBadge'
 import { PropTypeIcon } from '../components/ui/PropTypeIcon'
+import { RevisionCard } from '../components/lease/RevisionCard'
+import { RegularizationCard } from '../components/lease/RegularizationCard'
 import { ArrowLeft, Mail, Phone, Pencil, Receipt, Download, Check, Ban, ChevronRight } from '../components/icons'
 import { eur, fmtDate, fullName, durationLabel } from '../lib/format'
 import type { LeaseDetail as LeaseDetailT, LeaseType, RentPayment, UpdateLeaseInput } from '../types'
@@ -111,7 +113,7 @@ export function LeaseDetail() {
 
   const openEdit = (l: LeaseDetailT) => {
     modalErr.clear()
-    setEditing({ type: l.type, rentAmount: l.rentAmount, chargesAmount: l.chargesAmount, rentDayOfMonth: l.rentDayOfMonth })
+    setEditing({ type: l.type, rentAmount: l.rentAmount, chargesAmount: l.chargesAmount, rentDayOfMonth: l.rentDayOfMonth, irlReference: l.irlReference ?? undefined, irlQuarter: l.irlQuarter ?? undefined, irlYear: l.irlYear ?? undefined })
   }
   const saveEdit = async () => {
     if (!editing) return
@@ -169,6 +171,8 @@ export function LeaseDetail() {
       </Card>
 
       <PaymentsCard leaseId={lease.id} />
+      <RevisionCard lease={lease} onEditLease={() => openEdit(lease)} />
+      <RegularizationCard lease={lease} />
 
       {editing && (
         <Modal title="Modifier le bail" onClose={() => setEditing(null)}>
@@ -189,7 +193,18 @@ export function LeaseDetail() {
           <Field label="Jour d'échéance du loyer (1-28)">
             <input type="number" min={1} max={28} className={inputCls} value={editing.rentDayOfMonth} onChange={e => setEditing({ ...editing, rentDayOfMonth: Number(e.target.value) })} />
           </Field>
-          <p className="text-xs text-slate-500 -mt-1 mb-3">Les nouveaux montants s'appliquent aux échéances générées ensuite. Celles déjà générées gardent leurs montants.</p>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="IRL de référence">
+              <input type="number" step="0.01" className={inputCls} value={editing.irlReference ?? ''} onChange={e => setEditing({ ...editing, irlReference: e.target.value === '' ? undefined : Number(e.target.value) })} />
+            </Field>
+            <Field label="Trimestre (1-4)">
+              <input type="number" min={1} max={4} className={inputCls} value={editing.irlQuarter ?? ''} onChange={e => setEditing({ ...editing, irlQuarter: e.target.value === '' ? undefined : Number(e.target.value) })} />
+            </Field>
+            <Field label="Année">
+              <input type="number" className={inputCls} value={editing.irlYear ?? ''} onChange={e => setEditing({ ...editing, irlYear: e.target.value === '' ? undefined : Number(e.target.value) })} />
+            </Field>
+          </div>
+          <p className="text-xs text-slate-500 -mt-1 mb-3">L'IRL de référence est celui indiqué dans le bail (ou celui de la dernière révision). Les nouveaux montants s'appliquent aux échéances générées ensuite. Celles déjà générées gardent leurs montants.</p>
           <div className="flex justify-end"><Button onClick={saveEdit} disabled={updateM.isPending}><Check size={16} />Enregistrer</Button></div>
         </Modal>
       )}

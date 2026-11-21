@@ -58,6 +58,8 @@ export interface Lease {
   createdAt: string
   property?: Pick<Property, 'id' | 'name' | 'address' | 'city'>
   tenant?: Pick<Tenant, 'id' | 'firstName' | 'lastName' | 'email'>
+  /** Dernière révision IRL (liste des baux uniquement) */
+  rentRevisions?: { effectiveDate: string }[]
 }
 
 /** Réponse de GET /api/leases/:id : bien et locataire complets. */
@@ -165,3 +167,60 @@ export interface CreateUserInput {
 }
 
 export type UpdateProfileInput = Partial<Pick<Profile, 'firstName' | 'lastName' | 'address' | 'zipCode' | 'city'>>
+
+// ── Phase 4 : IRL, révisions, charges, régularisations ──
+export interface IrlIndex { id: string; quarter: number; year: number; value: number }
+export interface IrlRef { value: number; quarter: number; year: number }
+export interface RevisionPreview {
+  leaseId: string
+  currentRent: number
+  nextRevisionDate: string
+  effectiveDate: string
+  lastRevisionDate: string | null
+  /** Ce qui manque pour réviser : l'IRL de référence du bail, ou l'indice publié */
+  missing: 'REFERENCE' | 'INDEX' | null
+  reference: IrlRef | null
+  newIndex: IrlRef | null
+  expectedIndex: { quarter: number; year: number } | null
+  computedRent: number | null
+}
+export interface RentRevision {
+  id: string
+  leaseId: string
+  effectiveDate: string
+  previousRent: number
+  newRent: number
+  previousIrlValue: number
+  previousIrlQuarter: number
+  previousIrlYear: number
+  newIrlValue: number
+  newIrlYear: number
+  createdAt: string
+}
+export interface Charge { id: string; propertyId: string; year: number; label: string; amount: number }
+export interface CreateChargeInput { propertyId: string; year: number; label: string; amount: number }
+export interface ChargeRegularization {
+  id: string
+  leaseId: string
+  year: number
+  occupiedDays: number
+  daysInYear: number
+  totalCharged: number
+  totalReal: number
+  balance: number
+  sentAt: string | null
+  createdAt: string
+}
+export interface RegularizationPreview {
+  year: number
+  occupiedDays: number
+  daysInYear: number
+  charges: { id: string; label: string; amount: number; share: number }[]
+  totalCharges: number
+  totalReal: number
+  totalCharged: number
+  balance: number
+  missingMonths: number[]
+  suggestedMonthlyCharges: number
+  existing: ChargeRegularization | null
+}

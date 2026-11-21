@@ -25,6 +25,8 @@ export const leasesRepository = {
       include: {
         property: { select: { id: true, name: true, address: true, city: true } },
         tenant: { select: { id: true, firstName: true, lastName: true, email: true } },
+        // Dernière révision IRL : le tableau de bord ne rappelle pas une révision déjà faite
+        rentRevisions: { select: { effectiveDate: true }, orderBy: { effectiveDate: 'desc' }, take: 1 },
       },
       orderBy: { startDate: 'desc' },
     })

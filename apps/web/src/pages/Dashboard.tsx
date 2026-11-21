@@ -59,7 +59,7 @@ export function coversMonth(l: Pick<Lease, 'startDate' | 'endDate' | 'active'>, 
   return l.endDate ? new Date(l.endDate).getTime() >= start : l.active
 }
 
-function buildAlerts(leases: Lease[], current: RentPayment[], now: Date, cur: Ym): Alert[] {
+export function buildAlerts(leases: Lease[], current: RentPayment[], now: Date, cur: Ym): Alert[] {
   const active = leases.filter(l => l.active)
   const alerts: Alert[] = []
   const rentsLink = `/rents?year=${cur.year}&month=${cur.month}`
@@ -100,12 +100,15 @@ function buildAlerts(leases: Lease[], current: RentPayment[], now: Date, cur: Ym
     let next = new Date(now.getFullYear(), start.getMonth(), start.getDate())
     if (next <= now) next = new Date(now.getFullYear() + 1, start.getMonth(), start.getDate())
     const days = Math.round((next.getTime() - now.getTime()) / DAY)
-    if (days <= 90)
+    // Déjà révisé pour cette échéance (révision appliquée depuis l'anniversaire précédent)
+    const lastRevision = l.rentRevisions?.[0] ? new Date(l.rentRevisions[0].effectiveDate) : null
+    const previous = new Date(next.getFullYear() - 1, next.getMonth(), next.getDate())
+    if (days <= 90 && !(lastRevision && lastRevision > previous))
       alerts.push({
         level: days <= 30 ? 'rose' : 'indigo', Icon: Euro,
         title: `Révision du loyer — ${l.property?.name ?? '?'}`,
         body: `${tenantName(l)} · Loyer actuel : ${eur(l.rentAmount)} HC. Date anniversaire le ${fmtDate(next)} (dans ${plural(days, 'jour')}).`,
-        action: { label: 'Voir le bail', to: `/leases/${l.id}` },
+        action: { label: 'Réviser le loyer', to: `/leases/${l.id}` },
       })
   }
   return alerts
