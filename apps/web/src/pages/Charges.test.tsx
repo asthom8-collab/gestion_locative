@@ -15,7 +15,9 @@ describe('page Charges', () => {
     expect(screen.getByText('Total 300,00 €')).toBeInTheDocument()
     expect(screen.getByText('T2', { selector: 'span' })).toBeInTheDocument()
     expect(screen.getByText('Aucune charge saisie pour 2025.')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Jean Dupont' })).toHaveAttribute('href', '/leases/l1')
+    // Périodes en clair (et non « Année / T1… »)
+    expect(screen.getByLabelText('Période pour Parking')).toHaveDisplayValue('Toute l’année')
+    expect(screen.getAllByRole('option', { name: '2e trimestre (avr.–juin)' })).toHaveLength(2)
   })
 
   it('ajoute une charge au bien', async () => {
@@ -30,21 +32,34 @@ describe('page Charges', () => {
     })))
   })
 
-  it('répartit les charges entre propriétaires successifs', async () => {
+  it('répartit les charges entre locataires (fin de bail, vacance) et entre propriétaires successifs', async () => {
+    const tenant = (over: Record<string, unknown>) => ({
+      leaseId: 'l1', tenantName: 'Jean Dupont', startDate: '2024-01-01T00:00:00.000Z', endDate: '2025-03-31T00:00:00.000Z', occupiedDays: 90,
+      share: 100, provisions: 60, balance: 40, missingMonths: [], regularization: null, ...over,
+    })
     mockApi({
       '/api/properties': props, '/api/charges?year=2025': [],
       '/api/charges/allocation?year=2025': [
-        { propertyId: 'p1', propertyName: 'Studio', total: 1065, owners: [
+        { propertyId: 'p1', propertyName: 'Studio', total: 1065, vacancy: 365, tenants: [
+          tenant({}),
+          tenant({ leaseId: 'l2', tenantName: 'Paul Durand', startDate: '2025-07-01T00:00:00.000Z', endDate: null, occupiedDays: 184, share: 600, provisions: 650, balance: -50, regularization: { id: 'r1', balance: -50 } }),
+        ], owners: [
           { userId: 'u1', name: 'Thomas Admin', share: 1, startDate: null, endDate: '2025-06-30T00:00:00.000Z', amount: 481 },
           { userId: 'u2', name: 'Claire Copro', share: 1, startDate: '2025-07-01T00:00:00.000Z', endDate: null, amount: 584 },
         ] },
-        { propertyId: 'p2', propertyName: 'Parking', total: 100, owners: [{ userId: 'u1', name: 'Thomas Admin', share: 1, startDate: null, endDate: null, amount: 100 }] },
+        { propertyId: 'p2', propertyName: 'Parking', total: 100, vacancy: 0, tenants: [], owners: [{ userId: 'u1', name: 'Thomas Admin', share: 1, startDate: null, endDate: null, amount: 100 }] },
       ],
     })
     render()
-    expect(await screen.findByText('Répartition entre propriétaires')).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Jean Dupont' })).toHaveAttribute('href', '/leases/l1')
+    expect(screen.getByText(/jusqu'au 31 mars 2025 \(90 j\)/)).toBeInTheDocument()
+    expect(screen.getByText('40,00 € à réclamer')).toBeInTheDocument()
+    expect(screen.getByText('50,00 € à rembourser')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Régularisée' })).toHaveAttribute('href', '/leases/l2')
+    expect(screen.getByRole('link', { name: 'Régulariser' })).toHaveAttribute('href', '/leases/l1')
+    expect(screen.getByText('365,00 €')).toBeInTheDocument()
+    expect(screen.getAllByText('Entre propriétaires')).toHaveLength(1) // un seul propriétaire sur le parking : rien à répartir
     expect(screen.getByText('481,00 €')).toBeInTheDocument()
     expect(screen.getByText(/Claire Copro/).textContent).toContain('depuis le 01 juillet 2025')
-    expect(screen.queryByText('Parking ·', { exact: false })).not.toBeInTheDocument() // un seul propriétaire : rien à répartir
   })
 })

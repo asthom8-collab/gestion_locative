@@ -7,7 +7,7 @@
 
 ### Où en est le code
 - `main` contient la phase 2, la refonte du front, le multipropriétaires et la phase 4 (validés à la main par Thomas le 2026-11-21).
-- `npm run verify` passe : 102 tests API, 67 tests front (branche `phase4b-notifications`).
+- `npm run verify` passe : 104 tests API, 68 tests front (branche `phase4b-notifications`).
 
 ### Comment relancer l'environnement de test à distance
 Thomas est souvent en SSH, accès par Tailscale :
@@ -94,7 +94,17 @@ Avancement :
   notifications (`/api/notifications`, préférences dans `/api/me`, essai), rappels de révision. Tests : 102 API.
 - [x] Front : cloche et page Notifications, section Notifications dans Paramètres, dates dans la fenêtre Propriétaires,
   trimestre et répartition entre propriétaires sur la page Charges, détail par période dans la régularisation. Tests : 67 front.
-- [ ] **Test par Thomas** : Paramètres → Notifications (sujet ntfy et/ou SMS, « Envoyer un essai ») ; un bail dont l'anniversaire tombe
+- [x] Premier test par Thomas (2026-11-21), retours corrigés :
+  - formulaire des charges qui sortait du cadre : `inputCls` contient `w-full`, qui écrasait toutes les largeurs (`w-24`, `w-28`, `w-36`).
+    Nouveau `fieldCls` (sans largeur) pour les champs à largeur fixe ; formulaire des charges en grille (sur deux lignes sur mobile) ;
+  - liste « Année / T1… » peu claire : « Toute l’année », « 1er trimestre (janv.–mars) »… ;
+  - dates de détention introuvables dans la fenêtre Propriétaires : champs plus visibles, avec un mode d'emploi de la vente ;
+  - « refacturer à chaque locataire une partie des charges, régularisation selon la fin du bail » : la page Charges montre par bien la part
+    de chaque locataire (prorata des jours occupés par période), les provisions, le solde à réclamer ou à rembourser, la vacance, et un lien vers la régularisation ;
+  - rappel de révision invérifiable : bloc « Prochains rappels » (date d'envoi, état) et bouton « Vérifier maintenant » sur la page Notifications.
+    (Le bail de test, anniversaire le 21/01/2027, était à 61 jours, donc juste hors du délai de 60 jours.)
+  - Le SMS Free Mobile ne sert qu'aux abonnés Free : la page Paramètres le dit, et présente ntfy (tous opérateurs) comme le canal par défaut.
+- [ ] **Second test par Thomas** : Paramètres → Notifications (sujet ntfy et/ou SMS, « Envoyer un essai ») ; un bail dont l'anniversaire tombe
   dans les 60 jours (rappel au redémarrage de l'API ou dans les 6 h) ; fenêtre Propriétaires avec des dates ; charges par trimestre.
 - [ ] Pour l'e-mail : choisir un SMTP (ex. Gmail + mot de passe d'application) et le mettre dans `apps/api/.env` (jamais dans le dépôt).
 - [ ] Puis fusion dans `main` et push.
@@ -188,6 +198,7 @@ colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locata
 ## Journal
 
 ### 2026-11-21
+- Retours de Thomas sur la phase 4 bis (formulaire des charges hors cadre, libellés des périodes, dates des propriétaires, prorata par locataire, rappels invérifiables) : corrigés sur la branche, voir la section Phase 4 bis.
 - Phase 4 validée par Thomas et fusionnée dans `main`. Nouvelles demandes : notifier les propriétaires avant l'anniversaire des baux (appli, e-mail, téléphone) et saisir les charges par trimestre, avec des quotes-parts datées (changement de propriétaire en cours d'année).
 - Phase 4 (charges, IRL) développée sur `phase4-charges-irl` (voir la section Phase 4). Bug évité grâce aux tests : la révision prenait l'indice le plus récent saisi, même publié après la date d'effet.
 - Tests à la main par Thomas (connexion, Paramètres, copropriété, second compte, quittance à deux signatures, écrans de la refonte) : « tout fonctionne super bien ». `multi-proprietaires` fusionnée dans `main` (fast-forward) et poussée.

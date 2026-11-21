@@ -47,6 +47,8 @@ export const api = {
     read: (id: string) => request<void>(`/notifications/${id}/read`, { method: 'POST' }),
     readAll: () => request<void>('/notifications/read-all', { method: 'POST' }),
     test: () => request<T.NotificationTestResult>('/notifications/test', { method: 'POST' }),
+    upcoming: () => request<T.UpcomingReminder[]>('/notifications/upcoming'),
+    check: () => request<{ created: number; upcoming: T.UpcomingReminder[] }>('/notifications/check', { method: 'POST' }),
   },
   charges: {
     list: (year: number) => request<T.Charge[]>(`/charges?year=${year}`),

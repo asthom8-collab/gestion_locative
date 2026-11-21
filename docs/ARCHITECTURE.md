@@ -79,8 +79,10 @@ middlewares/   validate, errorHandler (AppError → JSON { error }, zod → 400 
 | `PUT /api/properties/:id/owners` | Copropriétaires du bien et quotes-parts, datées (`startDate`, `endDate` facultatives) |
 | `GET /api/irl`, `PUT /api/irl {quarter, year, value}` | Indices IRL (communs à tous les comptes) ; PUT crée ou corrige |
 | `GET /api/charges?year&propertyId`, `POST /api/charges`, `PATCH/DELETE /api/charges/:id` | Charges récupérables réelles d'un bien pour une année ou un trimestre (`quarter` 1 à 4, null = année) |
-| `GET /api/charges/allocation?year` | Répartition des charges de l'année entre propriétaires successifs (quotes-parts datées) |
+| `GET /api/charges/allocation?year` | Répartition des charges de l'année par bien : entre locataires (`tenants` : part réelle au prorata des jours occupés dans la période de chaque charge, provisions, solde, régularisation faite), part de vacance (`vacancy`, reste aux propriétaires), et entre propriétaires successifs (`owners`, quotes-parts datées) |
 | `GET /api/notifications`, `POST /api/notifications/:id/read`, `POST …/read-all` | Notifications de l'utilisateur (50 dernières), lecture |
+| `GET /api/notifications/upcoming` | Prochains rappels de l'utilisateur : par bail actif, anniversaire, date d'envoi (`remindOn` = anniversaire − délai), état (`planned`, `sent`, `past`, `not_owner`) |
+| `POST /api/notifications/check` | Lance tout de suite la recherche des rappels (tous les baux, idempotent) ; renvoie `{ created, upcoming }` |
 | `POST /api/notifications/test` | Message d'essai sur tous les canaux ; résultat par canal (`sent`, `disabled`, `not_configured`, `{error}`) |
 | `GET /api/leases/:id/revisions`, `GET …/revisions/preview[?date]` | Historique des révisions ; proposition (date, indices, loyer maximum, ce qui manque) |
 | `POST /api/leases/:id/revisions {effectiveDate, newRent?}`, `DELETE …/revisions/:rid` | Applique une révision ; annule la dernière |
@@ -405,7 +407,7 @@ src/components/icons.tsx   point d'entrée unique des icônes lucide-react
 | `/leases/:id` | Fiche du bail : conditions, modification, résiliation, échéances et quittances du bail |
 | `/rents?year&month` | Loyers : génération, encaissements, quittances |
 | `/charges?year` | Charges récupérables par bien, par année ou par trimestre, répartition entre propriétaires successifs, liens vers la régularisation de chaque bail |
-| `/notifications` | Notifications (rappels de révision) ; cloche avec le nombre de non lues dans la barre latérale et l'en-tête mobile |
+| `/notifications` | Notifications (rappels de révision), avec le bloc « Prochains rappels » et le bouton « Vérifier maintenant » ; cloche avec le nombre de non lues dans la barre latérale et l'en-tête mobile |
 | `/settings` | Paramètres : identité et adresse, signature, mot de passe, notifications (délai, e-mail, ntfy, SMS Free Mobile, essai), indices IRL, comptes (administrateur) |
 
 **Connexion** : `components/auth/AuthGate` n'affiche l'application qu'à un utilisateur connecté ; sinon l'écran de

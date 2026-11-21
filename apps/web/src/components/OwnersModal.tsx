@@ -68,7 +68,9 @@ export function OwnersModal({ property, onClose }: { property: Property; onClose
         Tous les propriétaires voient le bien, ses baux et ses loyers, et signent les quittances. La quote-part sert à répartir les charges, et servira pour les impôts.
       </p>
       <p className="text-xs text-slate-500 mb-4">
-        Changement de propriétaire : donnez une date de fin à l'ancien et une date de début au nouveau (dates facultatives, sinon « depuis toujours »).
+        <strong>Changement de propriétaire</strong> (vente, donation…) : ajoutez le nouveau propriétaire avec la liste ci-dessous,
+        mettez une date « jusqu'au » à l'ancien (la veille de la vente) et une date « depuis le » au nouveau (le jour de la vente).
+        Les charges et les rappels sont ensuite répartis à la date.
       </p>
       <div className="space-y-2 mb-3">
         {rows.map((r, i) => (
@@ -88,17 +90,20 @@ export function OwnersModal({ property, onClose }: { property: Property; onClose
               <X size={15} />
             </button>
           </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-slate-500">
-            <label className="flex items-center gap-1.5">Depuis le
-              <input type="date" aria-label={`Début de détention de ${nameOf(r.userId)}`} className={`${inputCls} !py-1 !text-xs w-36`}
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <label className="block text-xs text-slate-500">Propriétaire depuis le
+              <input type="date" aria-label={`Début de détention de ${nameOf(r.userId)}`} className={`${inputCls} mt-1 min-h-[38px]`}
                 value={r.startDate} onChange={e => patch(i, { startDate: e.target.value })} />
             </label>
-            <label className="flex items-center gap-1.5">jusqu'au
-              <input type="date" aria-label={`Fin de détention de ${nameOf(r.userId)}`} className={`${inputCls} !py-1 !text-xs w-36`}
+            <label className="block text-xs text-slate-500">jusqu'au
+              <input type="date" aria-label={`Fin de détention de ${nameOf(r.userId)}`} className={`${inputCls} mt-1 min-h-[38px]`}
                 value={r.endDate} onChange={e => patch(i, { endDate: e.target.value })} />
             </label>
-            {r.endDate && r.endDate < today() && <span className="text-amber-700 self-center">ancien propriétaire</span>}
           </div>
+          <p className="text-[11px] text-slate-400 mt-1">
+            {r.endDate && r.endDate < today() ? <span className="text-amber-700">Ancien propriétaire (garde l'accès à l'historique)</span>
+              : `${r.startDate ? '' : 'Début vide : depuis toujours. '}${r.endDate ? '' : 'Fin vide : encore propriétaire.'}`}
+          </p>
           </div>
         ))}
       </div>

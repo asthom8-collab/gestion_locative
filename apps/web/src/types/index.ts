@@ -228,10 +228,29 @@ export interface RentRevision {
 /** quarter : trimestre (1 à 4), ou null pour l'année entière */
 export interface Charge { id: string; propertyId: string; year: number; quarter: number | null; label: string; amount: number }
 export interface CreateChargeInput { propertyId: string; year: number; quarter?: number | null; label: string; amount: number }
+/** Prochain rappel de révision d'un bail pour l'utilisateur connecté. */
+export interface UpcomingReminder {
+  leaseId: string
+  tenantName: string
+  propertyName: string
+  anniversary: string
+  /** Date à partir de laquelle le rappel part (anniversaire − délai réglé dans Paramètres) */
+  remindOn: string
+  daysLeft: number
+  /** planned : à venir ; sent : envoyé ; past : anniversaire passé (révision à faire) ; not_owner : plus propriétaire à cette date */
+  status: 'planned' | 'sent' | 'past' | 'not_owner'
+  sentAt: string | null
+}
 export interface ChargeAllocation {
   propertyId: string
   propertyName: string
   total: number
+  tenants: {
+    leaseId: string; tenantName: string; startDate: string; endDate: string | null; occupiedDays: number
+    share: number; provisions: number; balance: number; missingMonths: number[]; regularization: { id: string; balance: number } | null
+  }[]
+  /** Part des charges tombant pendant la vacance (non refacturable) */
+  vacancy: number
   owners: { userId: string; name: string; share: number; startDate: string | null; endDate: string | null; amount: number }[]
 }
 export interface ChargeRegularization {

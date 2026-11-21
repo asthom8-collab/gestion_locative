@@ -61,8 +61,11 @@ export const chargesService = {
   },
 
   /**
-   * Répartition des charges de l'année entre propriétaires : pour chaque charge, quote-part × jours détenus
-   * dans la période de la charge / jours de la période. Seuls les biens de l'utilisateur sont listés.
+   * Répartition des charges de l'année d'un bien :
+   * - entre locataires : part de chaque bail (jours occupés dans la période de chaque charge), provisions appelées,
+   *   solde, et régularisation déjà faite ; le reste (vacance) reste à la charge des propriétaires ;
+   * - entre propriétaires : quote-part × jours détenus dans la période de la charge / jours de la période.
+   * Seuls les biens de l'utilisateur sont listés.
    */
   async allocation(userId: string, year: number) {
     const properties = await prisma.property.findMany({
@@ -70,7 +73,23 @@ export const chargesService = {
       include: { charges: { where: { year } }, ownerships: { include: { user: { select: { firstName: true, lastName: true } } }, orderBy: { createdAt: 'asc' } } },
       orderBy: { name: 'asc' },
     })
-    return properties.map((p) => {
+    const yStart = new Date(Date.UTC(year, 0, 1)), yEnd = new Date(Date.UTC(year, 11, 31))
+    return Promise.all(properties.map(async (p) => {
+      const leaseIds = await prisma.lease.findMany({
+        where: { propertyId: p.id, startDate: { lte: yEnd }, OR: [{ endDate: null }, { endDate: { gte: yStart } }] },
+        select: { id: true }, orderBy: { startDate: 'asc' },
+      })
+      const tenants = []
+      for (const { id } of leaseIds) {
+        const lease = await leaseOrThrow(id, userId)
+        const r = await compute(lease, year)
+        const existing = await regularizationsRepository.find(id, year)
+        tenants.push({
+          leaseId: id, tenantName: `${lease.tenant.firstName} ${lease.tenant.lastName}`, startDate: lease.startDate, endDate: lease.endDate,
+          occupiedDays: r.occupiedDays, share: r.totalReal, provisions: r.totalCharged, balance: r.balance,
+          missingMonths: r.missingMonths, regularization: existing ? { id: existing.id, balance: existing.balance } : null,
+        })
+      }
       const totals = new Map<string, number>()
       for (const c of p.charges) {
         for (const a of allocate(c.amount, periodBounds(year, c.quarter), p.ownerships)) totals.set(a.userId, (totals.get(a.userId) ?? 0) + a.amount)
@@ -80,8 +99,9 @@ export const chargesService = {
         userId: o.userId, name: `${o.user.firstName} ${o.user.lastName}`, share: o.share, startDate: o.startDate, endDate: o.endDate,
         amount: round2(totals.get(o.userId) ?? 0),
       })).filter((o) => o.amount > 0)
-      return { propertyId: p.id, propertyName: p.name, total, owners }
-    })
+      const vacancy = round2(total - tenants.reduce((s, t) => s + t.share, 0))
+      return { propertyId: p.id, propertyName: p.name, total, tenants, vacancy, owners }
+    }))
   },
 
   async update(id: string, userId: string, data: Partial<Omit<ChargeInput, 'propertyId'>>) {

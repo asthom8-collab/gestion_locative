@@ -118,7 +118,10 @@ describe('contrat API ↔ front', () => {
     expect(keys(owners[0])).toEqual(expect.arrayContaining(['id', 'userId', 'share', 'startDate', 'endDate', 'user']))
     await api().post('/api/charges').send({ propertyId: p.id, year: 2026, quarter: 1, label: 'Eau', amount: 100 }).expect(201)
     const [a] = (await api().get('/api/charges/allocation?year=2026').expect(200)).body
-    expect(keys(a)).toEqual(['owners', 'propertyId', 'propertyName', 'total'])
+    expect(keys(a)).toEqual(['owners', 'propertyId', 'propertyName', 'tenants', 'total', 'vacancy'])
     expect(keys(a.owners[0])).toEqual(['amount', 'endDate', 'name', 'share', 'startDate', 'userId'])
+    expect(keys(a.tenants[0])).toEqual(['balance', 'endDate', 'leaseId', 'missingMonths', 'occupiedDays', 'provisions', 'regularization', 'share', 'startDate', 'tenantName'])
+    const [u] = (await api().get('/api/notifications/upcoming').expect(200)).body
+    expect(keys(u)).toEqual(['anniversary', 'daysLeft', 'leaseId', 'propertyName', 'remindOn', 'sentAt', 'status', 'tenantName'])
   })
 })

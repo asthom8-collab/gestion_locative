@@ -63,4 +63,22 @@ describe('charges par trimestre', () => {
     expect(a.owners.map((o: { name: string; amount: number }) => [o.name, o.amount])).toEqual([['Admin Test', 481], ['Claire Copro', 584]])
     expect((await api().get('/api/charges/allocation?year=2025').expect(200)).body).toEqual([])
   })
+
+  it('répartit les charges entre locataires successifs, le reste en vacance', async () => {
+    const p = await createProperty({ name: 'Studio' })
+    const t1 = await createTenant({ firstName: 'Léa', lastName: 'Martin' })
+    const t2 = await createTenant({ firstName: 'Paul', lastName: 'Durand', email: 'paul@exemple.fr' })
+    // Léa part le 31/03 (fin de bail), Paul arrive le 01/07 : le 2e trimestre est vacant
+    const l1 = await createLease(p.id, t1.id, { startDate: '2025-01-01T00:00:00.000Z', chargesAmount: 0 })
+    await api().post(`/api/leases/${l1.id}/terminate`).send({ endDate: '2026-03-31T00:00:00.000Z' }).expect(200)
+    const l2 = await createLease(p.id, t2.id, { startDate: '2026-07-01T00:00:00.000Z', chargesAmount: 0 })
+    for (const q of [1, 2, 3, 4]) await addCharge(p.id, 'Eau', 100, q)
+    const [a] = (await api().get('/api/charges/allocation?year=2026').expect(200)).body
+    expect(a.tenants.map((t: { leaseId: string; tenantName: string; share: number; balance: number; regularization: unknown }) =>
+      [t.leaseId, t.tenantName, t.share, t.balance, t.regularization])).toEqual([[l1.id, 'Léa Martin', 100, 100, null], [l2.id, 'Paul Durand', 200, 200, null]])
+    expect(a.vacancy).toBe(100)
+    await api().post(`/api/leases/${l1.id}/regularizations`).send({ year: 2026 }).expect(201)
+    const [b] = (await api().get('/api/charges/allocation?year=2026').expect(200)).body
+    expect(b.tenants[0].regularization).toMatchObject({ balance: 100 })
+  })
 })

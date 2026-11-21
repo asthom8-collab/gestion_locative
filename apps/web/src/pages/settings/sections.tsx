@@ -8,7 +8,7 @@ import { api } from '../../api/client'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
-import { Field, inputCls } from '../../components/ui/Field'
+import { Field, fieldCls, inputCls } from '../../components/ui/Field'
 import { ErrorAlert } from '../../components/ui/ErrorAlert'
 import { PasswordForm } from '../../components/auth/PasswordForm'
 import { Check, PenLine, KeyRound, Users2, Upload, Trash2, Plus, Bell, Send } from '../../components/icons'
@@ -185,15 +185,15 @@ export function IrlCard() {
       <ErrorAlert message={error} onClose={clear} />
       <div className="flex flex-wrap gap-2 items-end mb-3">
         <label className="text-xs text-slate-500">Trimestre
-          <select aria-label="Trimestre" className={`${inputCls} mt-1`} value={form.quarter} onChange={e => setForm({ ...form, quarter: Number(e.target.value) })}>
+          <select aria-label="Trimestre" className={`${fieldCls} mt-1 block`} value={form.quarter} onChange={e => setForm({ ...form, quarter: Number(e.target.value) })}>
             {[1, 2, 3, 4].map(q => <option key={q} value={q}>T{q}</option>)}
           </select>
         </label>
         <label className="text-xs text-slate-500">Année
-          <input aria-label="Année" type="number" className={`${inputCls} mt-1 w-24`} value={form.year} onChange={e => setForm({ ...form, year: Number(e.target.value) })} />
+          <input aria-label="Année" type="number" className={`${fieldCls} mt-1 w-24`} value={form.year} onChange={e => setForm({ ...form, year: Number(e.target.value) })} />
         </label>
         <label className="text-xs text-slate-500">Valeur
-          <input aria-label="Valeur" type="number" step="0.01" className={`${inputCls} mt-1 w-28`} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
+          <input aria-label="Valeur" type="number" step="0.01" className={`${fieldCls} mt-1 w-28`} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
         </label>
         <Button onClick={save} disabled={!form.value || saveM.isPending}>Enregistrer</Button>
       </div>
@@ -258,7 +258,7 @@ function NotificationsForm({ me }: { me: Profile }) {
       <ErrorAlert message={error} onClose={clear} />
       <div className="space-y-4">
         <Field label="Prévenir combien de jours avant l'anniversaire du bail">
-          <input type="number" min={1} max={180} className={`${inputCls} w-28`} value={form.notifyDaysBefore} onChange={e => set({ notifyDaysBefore: e.target.value })} />
+          <input type="number" min={1} max={180} className={`${fieldCls} w-28`} value={form.notifyDaysBefore} onChange={e => set({ notifyDaysBefore: e.target.value })} />
         </Field>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input type="checkbox" checked={form.notifyEmail} onChange={e => set({ notifyEmail: e.target.checked })} />
@@ -270,6 +270,7 @@ function NotificationsForm({ me }: { me: Profile }) {
         <p className="text-xs text-slate-500 -mt-2">
           Installez l'application gratuite <strong>ntfy</strong> (App Store ou Google Play), abonnez-vous à un sujet difficile à deviner
           (n'importe qui connaissant le sujet peut lire les messages), puis saisissez le même sujet ici.
+          Fonctionne avec tous les opérateurs : c'est le canal à choisir si vous n'êtes pas chez Free.
         </p>
         <div className="grid sm:grid-cols-2 gap-3">
           <Field label="Téléphone : SMS Free Mobile (identifiant)">
@@ -281,7 +282,7 @@ function NotificationsForm({ me }: { me: Profile }) {
           </Field>
         </div>
         <p className="text-xs text-slate-500 -mt-2">
-          Abonnés Free Mobile : activez l'option gratuite « Notifications par SMS » dans l'espace abonné (Mes options), qui donne la clé.
+          Réservé aux abonnés Free Mobile : activez l'option gratuite « Notifications par SMS » dans l'espace abonné (Mes options), qui donne la clé.
           {me.hasFreeMobileKey && <> <button className="text-rose-600 underline" onClick={() => save({ freeMobileKey: '' })}>Supprimer la clé</button></>}
         </p>
       </div>

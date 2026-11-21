@@ -7,4 +7,8 @@ export function Field({ label, children }: { label: string; children: React.Reac
   )
 }
 
-export const inputCls = 'w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500'
+/** Style d'un champ sans largeur : à combiner avec une largeur (w-24…), que `w-full` écraserait. */
+export const fieldCls = 'px-3 py-2 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500'
+
+/** Champ pleine largeur. */
+export const inputCls = `w-full ${fieldCls}`

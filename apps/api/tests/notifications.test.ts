@@ -121,4 +121,18 @@ describe('/api/notifications', () => {
     await api().patch('/api/me').send({ ntfyTopic: 'avec espace' }).expect(400)
     expect((await api().patch('/api/me').send({ freeMobileKey: '' }).expect(200)).body.hasFreeMobileKey).toBe(false)
   })
+
+  it('prochains rappels : date d’envoi selon le délai, état, vérification à la demande', async () => {
+    const { lease } = await setup()
+    const [u] = await notificationsService.upcoming(DEV_USER_ID, new Date('2025-10-01'))
+    expect(u).toMatchObject({ leaseId: lease.id, tenantName: 'Léa Martin', status: 'planned', daysLeft: 92 })
+    expect(u.anniversary.toISOString().slice(0, 10)).toBe('2026-01-01')
+    expect(u.remindOn.toISOString().slice(0, 10)).toBe('2025-11-02') // 60 jours avant
+    await run('2025-12-01')
+    expect((await notificationsService.upcoming(DEV_USER_ID, new Date('2025-12-01')))[0].status).toBe('sent')
+    expect((await api(( await createUser()).cookie).get('/api/notifications/upcoming').expect(200)).body).toEqual([])
+    const res = await api().post('/api/notifications/check').expect(200)
+    expect(res.body).toMatchObject({ created: 0 })
+    expect(res.body.upcoming).toHaveLength(1)
+  })
 })

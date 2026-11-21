@@ -83,6 +83,36 @@ export const notificationsService = {
   },
 
   /**
+   * Prochains rappels de l'utilisateur : pour chaque bail actif de ses biens, la date anniversaire, la date à partir
+   * de laquelle le rappel part (anniversaire − délai choisi) et s'il est déjà parti. Sert à vérifier le réglage.
+   */
+  async upcoming(userId: string, now = new Date()) {
+    const today = toUtcDay(now)
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { notifyDaysBefore: true } })
+    const leases = await prisma.lease.findMany({
+      where: { active: true, property: { ownerships: { some: { userId } } } },
+      include: { tenant: true, property: { include: { ownerships: ownershipsWithUsers } }, rentRevisions: { orderBy: { effectiveDate: 'asc' } } },
+    })
+    const sent = await prisma.notification.findMany({ where: { userId, kind: REVISION_KIND }, select: { leaseId: true, dueDate: true, createdAt: true } })
+    const rows = []
+    for (const lease of leases) {
+      const { nextRevisionDate: anniversary } = await computeRevision(lease, undefined)
+      if (lease.endDate && toUtcDay(lease.endDate) < anniversary) continue
+      const owner = ownersAt(lease.property.ownerships, anniversary).find((o) => o.userId === userId)
+      const remindOn = new Date(anniversary.getTime() - user.notifyDaysBefore * 86_400_000)
+      const done = sent.find((n) => n.leaseId === lease.id && n.dueDate?.getTime() === anniversary.getTime())
+      rows.push({
+        leaseId: lease.id, tenantName: `${lease.tenant.firstName} ${lease.tenant.lastName}`, propertyName: lease.property.name,
+        anniversary, remindOn, daysLeft: daysBetween(today, anniversary) - 1,
+        // Pas propriétaire à la date anniversaire (cession) : pas de rappel pour lui
+        status: !owner ? 'not_owner' as const : done ? 'sent' as const : anniversary < today ? 'past' as const : 'planned' as const,
+        sentAt: done?.createdAt ?? null,
+      })
+    }
+    return rows.sort((a, b) => a.anniversary.getTime() - b.anniversary.getTime())
+  },
+
+  /**
    * Rappels de révision : pour chaque bail actif dont l'anniversaire (ou celui de la dernière révision) tombe dans
    * le délai choisi par chaque propriétaire, une notification par propriétaire à cette date (quotes-parts datées),
    * dans l'application et sur ses canaux. Idempotent : une seule notification par bail, propriétaire et anniversaire.

@@ -36,4 +36,23 @@ describe('notifications', () => {
     renderWithProviders(<Routes><Route path="/notifications" element={<Notifications />} /></Routes>, '/notifications')
     expect(await screen.findByRole('link', { name: 'Ouvrir le bail' })).toHaveAttribute('href', '/leases/l1')
   })
+
+  it('prochains rappels : date d’envoi, état, vérification à la demande', async () => {
+    const up = (over: Record<string, unknown>) => ({
+      leaseId: 'l1', tenantName: 'Jean Dupont', propertyName: 'Studio', anniversary: '2027-01-21T00:00:00.000Z',
+      remindOn: '2026-11-22T00:00:00.000Z', daysLeft: 61, status: 'planned', sentAt: null, ...over,
+    })
+    const fetchMock = mockApi({
+      '/api/notifications': [],
+      '/api/notifications/upcoming': [up({}), up({ leaseId: 'l2', tenantName: 'Paul Durand', status: 'sent', sentAt: '2026-11-01T08:00:00.000Z', daysLeft: 20 })],
+      'POST /api/notifications/check': { created: 0, upcoming: [] },
+    })
+    renderWithProviders(<Routes><Route path="/notifications" element={<Notifications />} /></Routes>, '/notifications')
+    expect(await screen.findByText(/rappel à partir du 22 novembre 2026/)).toBeInTheDocument()
+    expect(screen.getByText(/anniversaire le 21 janvier 2027 \(dans 61 j\)/)).toBeInTheDocument()
+    expect(screen.getByText('rappel envoyé le 01 novembre 2026')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Vérifier maintenant/ }))
+    expect(await screen.findByText('Aucun rappel à envoyer aujourd’hui')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith('/api/notifications/check', expect.objectContaining({ method: 'POST' }))
+  })
 })

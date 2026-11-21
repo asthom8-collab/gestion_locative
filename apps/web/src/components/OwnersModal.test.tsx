@@ -39,7 +39,7 @@ describe('fenêtre des propriétaires', () => {
     fireEvent.change(screen.getByLabelText('Quote-part de Claire Copro'), { target: { value: '100' } })
     fireEvent.change(screen.getByLabelText('Fin de détention de Thomas Admin'), { target: { value: '2020-06-30' } })
     fireEvent.change(screen.getByLabelText('Début de détention de Claire Copro'), { target: { value: '2020-07-02' } })
-    expect(screen.getByText('ancien propriétaire')).toBeInTheDocument()
+    expect(screen.getByText(/Ancien propriétaire/)).toBeInTheDocument()
     expect(screen.getByText(/Total aujourd’hui/)).toHaveTextContent('100 %')
     fireEvent.click(screen.getByRole('button', { name: /Enregistrer/ }))
     expect(await screen.findByRole('alert')).toHaveTextContent('au 01/07/2020')
