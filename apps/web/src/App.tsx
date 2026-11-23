@@ -14,6 +14,7 @@ import { LeaseDetail } from './pages/LeaseDetail'
 import { Rents } from './pages/Rents'
 import { Charges } from './pages/Charges'
 import { Owners } from './pages/Owners'
+import { Indices } from './pages/Indices'
 import { Notifications } from './pages/Notifications'
 import { Settings } from './pages/Settings'
 
@@ -51,6 +52,7 @@ export default function App() {
                 <Route path="/leases/:id" element={<LeaseDetail />} />
                 <Route path="/rents" element={<Rents />} />
                 <Route path="/charges" element={<Charges />} />
+                <Route path="/indices" element={<Indices />} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>

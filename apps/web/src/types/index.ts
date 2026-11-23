@@ -159,13 +159,16 @@ export interface Profile {
   hasFreeMobileKey: boolean
 }
 
-/** Annuaire des utilisateurs (choix des copropriétaires). */
+/** Annuaire : tous les comptes (avec le rôle) pour l'administrateur, soi et ses copropriétaires sinon. */
 export interface DirectoryUser {
   id: string
   firstName: string
   lastName: string
   email: string
+  role?: 'ADMIN' | 'USER'
 }
+/** Libellés des rôles : USER = propriétaire (ne voit que ses biens et ses copropriétaires). */
+export const ROLE_LABELS = { ADMIN: 'Administrateur', USER: 'Propriétaire' } as const
 
 export interface CreateUserInput {
   email: string
@@ -197,7 +200,15 @@ export interface NotificationTestResult { email: ChannelResult; ntfy: ChannelRes
 export interface OwnerInput { userId: string; share: number; startDate?: string | null; endDate?: string | null }
 
 // ── Phase 4 : IRL, révisions, charges, régularisations ──
-export interface IrlIndex { id: string; quarter: number; year: number; value: number }
+export interface IrlIndex {
+  id: string; quarter: number; year: number; value: number
+  /** INSEE : importé automatiquement ; MANUAL : saisi à la main */
+  source: 'INSEE' | 'MANUAL'
+  /** Date de publication au Journal officiel (import INSEE) */
+  publishedAt: string | null
+}
+/** Dernière vérification des indices auprès de l'INSEE (null : pas encore faite depuis le démarrage de l'API) */
+export interface IrlSyncResult { checkedAt: string; added: number; corrected: number; latest: { year: number; quarter: number } | null; error?: string }
 export interface IrlRef { value: number; quarter: number; year: number }
 export interface RevisionPreview {
   leaseId: string

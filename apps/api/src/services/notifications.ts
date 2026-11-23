@@ -47,7 +47,7 @@ function reminderMessage(lease: LeaseForReminder, r: Awaited<ReturnType<typeof c
   } else {
     lines.push(r.missing === 'REFERENCE'
       ? 'L’IRL de référence du bail n’est pas renseigné : complétez-le dans la fiche du bail.'
-      : `L’indice IRL du T${r.expectedIndex!.quarter} ${r.expectedIndex!.year} n’est pas encore saisi : reprenez-le sur insee.fr dès sa publication, puis saisissez-le dans Paramètres.`)
+      : `L’indice IRL du T${r.expectedIndex!.quarter} ${r.expectedIndex!.year} n’est pas encore disponible : il sera importé automatiquement depuis l’INSEE dès sa publication (page Indices IRL).`)
     if (share < 1) lines.push(`Votre quote-part : ${pct(share)}.`)
   }
   if (coOwners.length) lines.push(`Copropriétaires prévenus : ${coOwners.join(', ')}.`)
@@ -132,6 +132,8 @@ export const notificationsService = {
       const owners = ownersAt(lease.property.ownerships, anniversary)
       for (const o of owners) {
         if (daysLeft > o.user.notifyDaysBefore) continue
+        // Déjà notifié (évite une tentative de doublon, que Prisma journalise même interceptée)
+        if (await prisma.notification.findFirst({ where: { userId: o.userId, kind: REVISION_KIND, leaseId: lease.id, dueDate: anniversary }, select: { id: true } })) continue
         const coOwners = owners.filter((x) => x.userId !== o.userId).map((x) => `${x.user.firstName} ${x.user.lastName} (${pct(x.share)})`)
         const m = reminderMessage(lease, await computeRevision(lease, anniversary), o.share, coOwners, daysLeft)
         let id: string

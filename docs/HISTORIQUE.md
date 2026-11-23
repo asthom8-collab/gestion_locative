@@ -162,6 +162,14 @@ colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locata
 
 ## Journal
 
+### 2026-11-23
+- Second test de Thomas : e-mail du compte rendu modifiable, accès aux dates de détention. Le prorata des charges par trimestre « a l'air de bien fonctionner ».
+- Demandes de Thomas, faites : alerte de régularisation périmée (tableau de bord, Charges, bail, cloche) avec un exemple en base
+  (`npm run demo:regularisation`) ; onglet Propriétaires (« très bien, on part là-dessus ») ; comptes remis dans Paramètres
+  avec deux rôles (administrateur, propriétaire sans visibilité sur les autres comptes) ; badges de régularisation plus visibles ;
+  indices IRL sortis des Paramètres (page Référentiels → Indices IRL, valeurs espacées) et importés chaque jour depuis l'INSEE.
+- SMTP Gmail configuré par Thomas dans `apps/api/.env` : essai d'envoi réussi (e-mail reçu attendu, ntfy non configuré).
+
 ### 2026-11-21
 - Retours de Thomas sur la phase 4 bis (formulaire des charges hors cadre, libellés des périodes, dates des propriétaires, prorata par locataire, rappels invérifiables) : corrigés sur la branche, voir la section Phase 4 bis.
 - Phase 4 validée par Thomas et fusionnée dans `main`. Nouvelles demandes : notifier les propriétaires avant l'anniversaire des baux (appli, e-mail, téléphone) et saisir les charges par trimestre, avec des quotes-parts datées (changement de propriétaire en cours d'année).

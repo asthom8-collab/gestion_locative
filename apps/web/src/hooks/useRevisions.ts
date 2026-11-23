@@ -3,6 +3,20 @@ import { api } from '../api/client'
 
 export const useIrlIndexes = () => useQuery({ queryKey: ['irl'], queryFn: api.irl.list })
 
+export const useIrlSync = () => useQuery({ queryKey: ['irl', 'sync'], queryFn: api.irl.lastSync })
+
+/** Vérifie tout de suite les indices publiés par l'INSEE (sinon fait chaque jour par l'API). */
+export function useSyncIrl() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: api.irl.sync,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['irl'] })
+      qc.invalidateQueries({ queryKey: ['revisions'] })
+    },
+  })
+}
+
 export function useSaveIrl() {
   const qc = useQueryClient()
   return useMutation({

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useProperties } from '../hooks/useProperties'
 import { useMe } from '../hooks/useMe'
-import { AccountsCard } from './settings/sections'
 import { OwnersModal } from '../components/OwnersModal'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Card } from '../components/ui/Card'
@@ -69,8 +68,8 @@ function PropertyOwners({ property, highlighted, onEdit, meId }: { property: Pro
 }
 
 /**
- * Propriétaires de chaque bien (quotes-parts et dates de détention) et, pour l'administrateur, comptes des
- * copropriétaires. `?property=<id>` met un bien en évidence (liens depuis les pages Biens et Charges).
+ * Propriétaires de chaque bien (quotes-parts et dates de détention). Les comptes se gèrent dans Paramètres
+ * (administrateur). `?property=<id>` met un bien en évidence (liens depuis les pages Biens et Charges).
  */
 export function Owners() {
   const { data: properties = [], isLoading } = useProperties()
@@ -99,7 +98,6 @@ export function Owners() {
         ) : properties.map(p => (
           <PropertyOwners key={p.id} property={p} highlighted={p.id === focus} onEdit={() => setEditing(p)} meId={me?.id} />
         ))}
-        {me?.role === 'ADMIN' && <AccountsCard />}
       </div>
       {editing && <OwnersModal property={editing} onClose={() => setEditing(null)} />}
     </div>

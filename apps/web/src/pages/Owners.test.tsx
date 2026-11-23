@@ -32,25 +32,4 @@ describe('page Propriétaires', () => {
     fireEvent.click(screen.getByRole('button', { name: /Modifier les propriétaires de Parking/ }))
     expect(await screen.findByText('Propriétaires — Parking')).toBeInTheDocument()
   })
-
-  it('l’administrateur crée un compte de copropriétaire avec un mot de passe provisoire', async () => {
-    mockApi({ '/api/properties': props, '/api/me': profile, '/api/users': users })
-    render()
-    fireEvent.click(await screen.findByRole('button', { name: /Nouveau compte/ }))
-    fireEvent.change(screen.getByLabelText('Prénom', { selector: '.fixed input' }), { target: { value: 'Paul' } })
-    fireEvent.change(screen.getByLabelText('Nom', { selector: '.fixed input' }), { target: { value: 'Durand' } })
-    fireEvent.change(screen.getByLabelText('E-mail (identifiant de connexion)'), { target: { value: 'paul@local.dev' } })
-    const password = (screen.getByLabelText('Mot de passe provisoire') as HTMLInputElement).value
-    expect(password).toMatch(/^[A-Za-z0-9]{12}$/)
-    mockApi({ '/api/properties': props, '/api/me': profile, '/api/users': users, 'POST /api/users': { ...users[0], id: 'u3', email: 'paul@local.dev' } })
-    fireEvent.click(screen.getByRole('button', { name: /Créer le compte/ }))
-    expect(await screen.findByRole('status')).toHaveTextContent(password)
-  })
-
-  it('un utilisateur non administrateur ne voit pas la gestion des comptes', async () => {
-    mockApi({ '/api/properties': props, '/api/me': { ...profile, role: 'USER' }, '/api/users': users })
-    render()
-    expect(await screen.findByText('Parking')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Nouveau compte/ })).not.toBeInTheDocument()
-  })
 })

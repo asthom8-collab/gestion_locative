@@ -74,10 +74,11 @@ middlewares/   validate, errorHandler (AppError → JSON { error }, zod → 400 
 | `GET/PATCH /api/me` | Profil et adresse du bailleur (avec `role`, `mustChangePassword`, `hasSignature`) ; `email` modifiable (minuscules, 409 si déjà pris), il sert d'identifiant et d'adresse des notifications |
 | `PUT /api/me/password` | Change son mot de passe (ferme les autres sessions) |
 | `GET/PUT/DELETE /api/me/signature` | Image de sa signature (PNG ou JPEG en data URL, 300 Ko au plus) |
-| `GET /api/users` | Annuaire (id, nom, e-mail) pour choisir les copropriétaires |
-| `POST /api/users`, `PUT /api/users/:id/password` | Administrateur : crée un compte, réinitialise un mot de passe (provisoire) |
+| `GET /api/users` | Annuaire (id, nom, e-mail) : tous les comptes avec leur `role` pour l'administrateur ; soi et les copropriétaires (actuels ou passés) de ses biens pour un propriétaire (`USER`) |
+| `POST /api/users`, `PUT /api/users/:id/password`, `PUT /api/users/:id/role {role}` | Administrateur : crée un compte (rôle `USER` = propriétaire par défaut), réinitialise un mot de passe (provisoire), change le rôle d'un autre compte (pas le sien, 400) |
 | `PUT /api/properties/:id/owners` | Copropriétaires du bien et quotes-parts, datées (`startDate`, `endDate` facultatives) |
-| `GET /api/irl`, `PUT /api/irl {quarter, year, value}` | Indices IRL (communs à tous les comptes) ; PUT crée ou corrige |
+| `GET /api/irl`, `PUT /api/irl {quarter, year, value}` | Indices IRL (communs à tous les comptes, `source` INSEE ou MANUAL, `publishedAt`) ; PUT crée ou corrige à la main |
+| `GET /api/irl/sync`, `POST /api/irl/sync` | Dernière vérification auprès de l'INSEE (null avant la première) ; vérification à la demande : `{checkedAt, added, corrected, latest, error?}` |
 | `GET /api/charges?year&propertyId`, `POST /api/charges`, `PATCH/DELETE /api/charges/:id` | Charges récupérables réelles d'un bien pour une année ou un trimestre (`quarter` 1 à 4, null = année) |
 | `GET /api/charges/allocation?year` | Répartition des charges de l'année par bien : entre locataires (`tenants` : part réelle au prorata des jours occupés dans la période de chaque charge, provisions, solde, régularisation faite), part de vacance (`vacancy`, reste aux propriétaires), et entre propriétaires successifs (`owners`, quotes-parts datées) ; `regularization.outdated` et `currentBalance` si la régularisation enregistrée est périmée |
 | `GET /api/charges/outdated-regularizations` | Régularisations enregistrées qui ne correspondent plus au recalcul (alerte du tableau de bord) : solde enregistré et recalculé |
@@ -247,7 +248,7 @@ erDiagram
   }
   Notification {
     string userId FK
-    string kind "REVISION_UPCOMING, TEST"
+    string kind "REVISION_UPCOMING, REGULARIZATION_OUTDATED, TEST"
     string leaseId
     datetime dueDate
     string title
@@ -258,6 +259,8 @@ erDiagram
     int quarter
     int year
     float value
+    string source "INSEE, MANUAL"
+    datetime publishedAt
   }
   LmnpEntry {
     string propertyId FK
@@ -308,8 +311,8 @@ erDiagram
 | BankTransaction | Opération bancaire importée, rapprochée d'une échéance | 3 | non |
 | Charge, ChargeRegularization | Charges réelles par bien, régularisation annuelle par bail (unique par bail et par année) | 4 | oui |
 | RentRevision | Historique des révisions IRL d'un bail (valeurs avant/après) | 4 | oui |
-| IrlIndex | Indices IRL de l'INSEE, saisis à la main | 4 | oui |
-| Notification | Notification d'un propriétaire (rappel de révision, essai) ; unique par `(userId, kind, leaseId, dueDate)` | 4 bis | oui |
+| IrlIndex | Indices IRL de l'INSEE, importés chaque jour (ou saisis à la main) | 4, 4 bis | oui |
+| Notification | Notification d'un propriétaire (rappel de révision, régularisation à refaire, essai) ; unique par `(userId, kind, leaseId, dueDate)` | 4 bis | oui |
 | LmnpEntry | Écritures comptables LMNP | 5 | non |
 | Document | Pièces jointes (bail, locataire) | US-04 | non |
 | Inventory, InventoryRoom, InventoryElement, InventoryPhoto | États des lieux d'entrée et de sortie | US-22 à 25 | non |
@@ -374,6 +377,16 @@ Il faudra une migration au moment de faire l'écran concerné :
   Une seule par bail, propriétaire et anniversaire. Envoyée aussi par e-mail (si `SMTP_HOST` est configuré et
   `notifyEmail`), sur ntfy (`ntfyTopic`) et par SMS Free Mobile (`freeMobileUser`/`freeMobileKey`, clé jamais renvoyée
   par l'API) ; un échec d'envoi est journalisé sans bloquer (`lib/notifiers.ts`).
+- **Régularisation à refaire, cloche** (`checkRegularizations`, `services/charges.ts`) : après chaque ajout, modification
+  ou suppression d'une charge, chaque régularisation de l'année du bien est recalculée ; si elle est périmée, une
+  notification `REGULARIZATION_OUTDATED` (`dueDate` = 1er janvier de l'année) à chaque propriétaire actuel, une seule
+  fois ; retirée quand la régularisation est refaite, supprimée ou redevenue juste. Cloche seulement (pas d'e-mail).
+  Exemple en base : `npm run demo:regularisation` (bien « Démo régularisation », sans toucher au reste).
+- **Import des IRL** (`services/irl.ts`, `lib/insee.ts`) : série 001515333 de la BDM de l'INSEE (SDMX, accès libre,
+  sans clé), 40 derniers trimestres, au démarrage de l'API puis chaque jour (`IRL_SYNC=off` pour couper). Ajoute les
+  trimestres manquants et remplace une valeur saisie à la main par la valeur officielle ; un échec est rendu, pas levé.
+- **Rôles** : `ADMIN` (voit et gère tous les comptes, dans Paramètres) et `USER` = propriétaire (ne voit que ses biens
+  et ses copropriétaires). Les droits sur un bien sont les mêmes pour tous ses propriétaires, quel que soit le rôle.
 - **Dates** : stockées en UTC à minuit. Les calculs de période se font en UTC des deux côtés.
 
 ### 5.1 Conséquences prévues de la copropriété (phases suivantes)
@@ -406,14 +419,15 @@ src/components/icons.tsx   point d'entrée unique des icônes lucide-react
 |---|---|
 | `/` | Tableau de bord : indicateurs, alertes, suivi mensuel des loyers |
 | `/properties` | Biens : type, régime fiscal, propriétaires (lien vers `/owners`), historique des locataires avec périodes de vacance |
-| `/owners?property` | Propriétaires : par bien, quotes-parts et dates de détention (statut actuel, ancien, à venir), modification (`components/OwnersModal`) ; comptes des copropriétaires (administrateur) |
+| `/owners?property` | Propriétaires : par bien, quotes-parts et dates de détention (statut actuel, ancien, à venir), modification (`components/OwnersModal`) |
+| `/indices` | Référentiel des indices IRL : valeur, évolution sur un an, source et date de publication, « Vérifier maintenant », saisie manuelle de secours |
 | `/tenants` | Locataires : onglets « En cours » / « Anciens et sans bail », historique des baux |
 | `/leases` | Locations (baux) : liste, création |
 | `/leases/:id` | Fiche du bail : conditions, modification, résiliation, échéances et quittances du bail |
 | `/rents?year&month` | Loyers : génération, encaissements, quittances |
 | `/charges?year` | Charges récupérables par bien, par année ou par trimestre, répartition entre propriétaires successifs, liens vers la régularisation de chaque bail |
 | `/notifications` | Notifications (rappels de révision), avec le bloc « Prochains rappels » et le bouton « Vérifier maintenant » ; cloche avec le nombre de non lues dans la barre latérale et l'en-tête mobile |
-| `/settings` | Paramètres : identité et adresse, signature, mot de passe, notifications (délai, e-mail, ntfy, SMS Free Mobile, essai), indices IRL |
+| `/settings` | Paramètres : identité et adresse, signature, mot de passe, notifications (délai, e-mail, ntfy, SMS Free Mobile, essai), comptes et rôles (administrateur) |
 
 **Connexion** : `components/auth/AuthGate` n'affiche l'application qu'à un utilisateur connecté ; sinon l'écran de
 connexion, ou le changement obligatoire du mot de passe provisoire. Une 401 pendant l'utilisation (session expirée)

@@ -64,7 +64,7 @@ describe('rappels de révision', () => {
     const { lease } = await setup()
     await prisma.irlIndex.deleteMany()
     await run('2025-12-01')
-    expect((await notifs(DEV_USER_ID))[0].body).toContain('L’indice IRL du T2 2025 n’est pas encore saisi')
+    expect((await notifs(DEV_USER_ID))[0].body).toContain('L’indice IRL du T2 2025 n’est pas encore disponible : il sera importé automatiquement')
 
     const t = await createTenant({ firstName: 'Paul', lastName: 'Durand', email: 'paul@exemple.fr' })
     const p2 = await createProperty({ name: 'T2' })

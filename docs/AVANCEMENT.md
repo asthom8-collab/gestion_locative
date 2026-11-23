@@ -4,52 +4,38 @@
 > Détails des phases livrées et journal : [HISTORIQUE.md](HISTORIQUE.md) (à consulter au besoin, à compléter en fin de session).
 > Description technique (API, modèle de données, règles métier, tests) : [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## ▶ Reprise — état au 2026-11-23
+## ▶ Reprise — état au 2026-11-23 (soir)
 
 ### Où en est le code
 - `main` (= `origin/main`) : phases 2 et 4, refonte du front, multipropriétaires.
-- Branche locale `phase4b-notifications` (non poussée) : phase 4 bis (notifications avant l'anniversaire des baux,
-  charges par trimestre, quotes-parts datées). `npm run verify` : 107 tests API, 74 tests front.
-  Choix, avancement et retours du premier test : HISTORIQUE.md § Phase 4 bis.
+- Branche locale `phase4b-notifications` (non poussée) : phase 4 bis (notifications, charges par trimestre, quotes-parts
+  datées) et retours de Thomas du 2026-11-23. `npm run verify` : 112 tests API, 74 tests front. Détail : HISTORIQUE.md.
 
-### Second test de la phase 4 bis (Thomas, 2026-11-22)
-- [x] Rappel de révision : alerte visible sur le tableau de bord et dans la cloche.
-- [x] SMS Free Mobile : sans objet (Thomas n'est pas chez Free).
-- [ ] ntfy : sujet dans Paramètres → Notifications, puis « Envoyer un essai » (application ntfy sur le téléphone, abonnée au même sujet).
-- [ ] Propriétaires : nouvel onglet **Propriétaires** (menu Patrimoine, 2026-11-23, à la demande de Thomas) : par bien,
-  quotes-parts, dates de détention, statut ; « Modifier » ouvre la fenêtre ; comptes des copropriétaires déplacés depuis Paramètres.
-- [x] Charges par trimestre : saisie, prorata (« ont l'air de bien fonctionner », Thomas, 2026-11-23).
-- [ ] Régularisation périmée (demande du 2026-11-23) : modifier une charge après l'enregistrement → alerte sur le tableau
-  de bord, badge « Régularisation à refaire » (Charges), bandeau « Mettre à jour » dans le bail.
-- [ ] E-mail : mot de passe d'application Gmail créé par Thomas ; bloc SMTP préparé dans `apps/api/.env`, à compléter (démarche ci-dessous).
-
-### Configurer l'e-mail (SMTP), démarche
-L'API envoie les e-mails par SMTP (`nodemailer`, `apps/api/src/lib/notifiers.ts`). Sans `SMTP_HOST`, aucun e-mail ne part
-(l'essai répond « non configuré »). Exemple avec Gmail, gratuit :
-1. Sur le compte Google qui enverra les e-mails, activer la **validation en deux étapes** (obligatoire pour l'étape 2).
-2. Créer un **mot de passe d'application** : https://myaccount.google.com/apppasswords → nom « gestion locative »,
-   noter les 16 caractères (affichés une seule fois). Ne jamais utiliser le vrai mot de passe du compte.
-3. Dans `apps/api/.env` (ignoré par git, **jamais dans le dépôt**) :
-   ```
-   SMTP_HOST=smtp.gmail.com
-   SMTP_PORT=465
-   SMTP_USER=<adresse gmail>
-   SMTP_PASS=<mot de passe d'application, sans espaces>
-   SMTP_FROM="Gestion locative <adresse gmail>"
-   ```
-   Pour le conteneur `api`, mettre les mêmes variables dans le `.env` de la racine et les passer dans `docker-compose.yml`.
-4. Redémarrer l'API, puis Paramètres → Notifications : cocher l'e-mail et « Envoyer un essai ».
-5. L'e-mail part à l'adresse du compte, modifiable dans Paramètres → Identité du bailleur (corrigé le 2026-11-23).
-   **Attention** : c'est aussi l'identifiant de connexion (le compte du seed est `admin@local.dev`).
-Autres fournisseurs possibles : celui de la messagerie de Thomas (paramètres SMTP fournis par l'opérateur), ou un service
-d'envoi (Brevo, gratuit jusqu'à 300 e-mails par jour). Seules les cinq variables changent.
+### À tester par Thomas (livré le 2026-11-23 au soir)
+- [ ] **Indices IRL** : menu Référentiels → Indices IRL (sortis des Paramètres, valeurs espacées, évolution sur un an,
+  source). Import **automatique** depuis l'INSEE chaque jour (40 trimestres déjà importés) + « Vérifier maintenant ».
+- [ ] **Comptes** : de retour dans Paramètres (administrateur), deux rôles : Administrateur / Propriétaire (un
+  propriétaire ne voit que lui-même et ses copropriétaires). Rôle au choix à la création, modifiable ensuite.
+- [ ] **Régularisation à refaire** : exemple en base, bien « Démo régularisation » (locataire Camille Exemple, eau
+  passée de 360 à 450 € après la régularisation 2025). À voir : tableau de bord, cloche, badge orange (Charges),
+  bandeau en haut de la fiche du bail → « Voir et mettre à jour » → « Mettre à jour la régularisation ».
+- [ ] **Badges** de la page Charges plus visibles (Régulariser / Régularisée / Régularisation à refaire).
+- [ ] ntfy : sujet dans Paramètres → Notifications, puis « Envoyer un essai ».
+- [x] E-mail : SMTP Gmail en place, essai envoyé par Claude le 2026-11-23 (vérifier la réception).
+- [x] Onglet Propriétaires validé (« très bien, on part là-dessus »). Charges par trimestre et prorata validés.
 
 ### Prochaines étapes, dans l'ordre
-1. Finir le second test (cases ci-dessus).
+1. Retours de Thomas sur la liste ci-dessus.
 2. Fusionner `phase4b-notifications` dans `main` et pousser.
-3. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, blocage AppArmor, puis `docker compose up -d --build`), avec `SESSION_SECRET` et le SMTP.
+3. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, blocage AppArmor, puis `docker compose up -d --build`),
+   avec `SESSION_SECRET` et les cinq variables `SMTP_*` (à copier de `apps/api/.env` dans le `.env` de la racine et à
+   passer dans `docker-compose.yml`).
 4. Suite : phase 3 (rapprochement bancaire) ou écrans restants de la maquette (Paiements, Synchro bancaire, Impôts,
    Interventions, Documents, États des lieux, dossier locataire), en gardant la répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1).
+
+### E-mail (SMTP)
+Configuré dans `apps/api/.env` (Gmail, mot de passe d'application ; ignoré par git, **jamais dans le dépôt**). L'API ne
+relit ce fichier qu'au démarrage. L'e-mail part à l'adresse du compte (Paramètres → Identité), qui est aussi l'identifiant.
 
 ### Relancer l'environnement de test à distance (Tailscale)
 ```bash

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useMe, useUpdateMe } from '../hooks/useMe'
-import { SignatureCard, PasswordCard, IrlCard, NotificationsCard } from './settings/sections'
+import { SignatureCard, PasswordCard, AccountsCard, NotificationsCard } from './settings/sections'
 import { PageHeader } from '../components/ui/PageHeader'
 import { Card } from '../components/ui/Card'
 import { Button } from '../components/ui/Button'
@@ -75,7 +75,7 @@ export function Settings() {
       <SignatureCard />
       <PasswordCard />
       <NotificationsCard />
-      <IrlCard />
+      {me?.role === 'ADMIN' && <AccountsCard />}
       </div>
     </div>
   )

@@ -92,6 +92,16 @@ describe('régularisation des charges', () => {
     await api().delete(`/api/charges/${eau.id}`).expect(204)
     expect(await outdated()).toMatchObject([{ id: reg.id, currentBalance: 0 }])
 
+    // Cloche : une seule notification « à refaire » (pas une par modification), retirée quand la régularisation est refaite
+    const bell = async () => (await api().get('/api/notifications').expect(200)).body.filter((n: { kind: string }) => n.kind === 'REGULARIZATION_OUTDATED')
+    expect(await bell()).toMatchObject([{ leaseId: lease.id, title: 'Régularisation 2026 à refaire : Jean Dupont', link: `/leases/${lease.id}` }])
+    await addCharge(p.id, 'Eau', 100).expect(201)
+    expect(await bell()).toHaveLength(1)
+    await api().delete(`/api/leases/${lease.id}/regularizations/${reg.id}`).expect(204)
+    expect(await bell()).toEqual([])
+    await api().post(`/api/leases/${lease.id}/regularizations`).send({ year: 2026 }).expect(201)
+    expect(await outdated()).toEqual([])
+
     // Un autre propriétaire ne voit pas l'alerte
     const other = await createUser()
     expect((await api(other.cookie).get('/api/charges/outdated-regularizations').expect(200)).body).toEqual([])

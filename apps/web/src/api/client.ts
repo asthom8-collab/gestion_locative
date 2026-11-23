@@ -31,6 +31,8 @@ export const api = {
     list: () => request<T.IrlIndex[]>('/irl'),
     save: (data: { quarter: number; year: number; value: number }) =>
       request<T.IrlIndex>('/irl', { method: 'PUT', body: JSON.stringify(data) }),
+    lastSync: () => request<T.IrlSyncResult | null>('/irl/sync'),
+    sync: () => request<T.IrlSyncResult>('/irl/sync', { method: 'POST' }),
   },
   revisions: {
     list: (leaseId: string) => request<T.RentRevision[]>(`/leases/${leaseId}/revisions`),
@@ -150,5 +152,7 @@ export const api = {
       request<import('../types').Profile>('/users', { method: 'POST', body: JSON.stringify(data) }),
     resetPassword: (id: string, password: string) =>
       request<void>(`/users/${id}/password`, { method: 'PUT', body: JSON.stringify({ password }) }),
+    setRole: (id: string, role: 'ADMIN' | 'USER') =>
+      request<import('../types').DirectoryUser>(`/users/${id}/role`, { method: 'PUT', body: JSON.stringify({ role }) }),
   },
 }

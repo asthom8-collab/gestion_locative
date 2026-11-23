@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useLease, useUpdateLease, useTerminateLease } from '../hooks/useLeases'
 import { useLeaseRentPayments, useGenerateReceipt } from '../hooks/useRentPayments'
 import { useActionError } from '../hooks/useActionError'
+import { useOutdatedRegularizations } from '../hooks/useCharges'
 import { api } from '../api/client'
 import { Card } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
@@ -14,7 +15,7 @@ import { PaymentStatusBadge } from '../components/ui/PaymentStatusBadge'
 import { PropTypeIcon } from '../components/ui/PropTypeIcon'
 import { RevisionCard } from '../components/lease/RevisionCard'
 import { RegularizationCard } from '../components/lease/RegularizationCard'
-import { ArrowLeft, Mail, Phone, Pencil, Receipt, Download, Check, Ban, ChevronRight } from '../components/icons'
+import { ArrowLeft, Mail, Phone, Pencil, Receipt, Download, Check, Ban, ChevronRight, AlertCircle } from '../components/icons'
 import { eur, fmtDate, fullName, durationLabel } from '../lib/format'
 import type { LeaseDetail as LeaseDetailT, LeaseType, RentPayment, UpdateLeaseInput } from '../types'
 
@@ -102,6 +103,9 @@ export function LeaseDetail() {
 
   const [editing, setEditing] = useState<UpdateLeaseInput | null>(null)
   const [terminating, setTerminating] = useState<string | null>(null)
+  // Régularisations de ce bail devenues fausses : bandeau en haut, qui ouvre la carte sur l'année concernée
+  const { data: allOutdated = [] } = useOutdatedRegularizations()
+  const [regYear, setRegYear] = useState<number | undefined>(undefined)
 
   if (isLoading) return <div className="text-slate-400 text-sm py-8 text-center">Chargement…</div>
   if (!lease) return (
@@ -130,9 +134,25 @@ export function LeaseDetail() {
     ? `${lease.irlReference}${lease.irlQuarter && lease.irlYear ? ` (T${lease.irlQuarter} ${lease.irlYear})` : ''}`
     : '—'
 
+  const outdated = allOutdated.filter(r => r.leaseId === lease.id)
+  const showRegularization = (year: number) => {
+    setRegYear(year)
+    requestAnimationFrame(() => document.getElementById('regularisation')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }))
+  }
+
   return (
     <div>
       <BackLink />
+      {outdated.map(r => (
+        <div key={r.id} role="note" className="mb-4 flex flex-wrap items-center gap-3 p-4 rounded-xl border border-amber-300 bg-amber-50">
+          <AlertCircle size={18} className="shrink-0 text-amber-500" />
+          <div className="flex-1 min-w-[12rem] text-sm text-amber-900">
+            <span className="font-semibold">Régularisation {r.year} à refaire</span> : les charges ont changé depuis son enregistrement
+            (solde enregistré {eur(r.balance)}{r.currentBalance != null && `, recalculé ${eur(r.currentBalance)}`}).
+          </div>
+          <Button onClick={() => showRegularization(r.year)}>Voir et mettre à jour</Button>
+        </div>
+      ))}
       <Card className="p-5 mb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -172,7 +192,7 @@ export function LeaseDetail() {
 
       <PaymentsCard leaseId={lease.id} />
       <RevisionCard lease={lease} onEditLease={() => openEdit(lease)} />
-      <RegularizationCard lease={lease} />
+      <div id="regularisation" className="scroll-mt-4"><RegularizationCard key={regYear} lease={lease} initialYear={regYear} /></div>
 
       {editing && (
         <Modal title="Modifier le bail" onClose={() => setEditing(null)}>

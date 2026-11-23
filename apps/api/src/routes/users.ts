@@ -16,9 +16,10 @@ const createSchema = z.object({
   role: z.enum(['ADMIN', 'USER']).optional(),
 })
 
-// Annuaire (id, nom, e-mail) : pour choisir les copropriétaires d'un bien
+// Annuaire (id, nom, e-mail) : tous les comptes et leur rôle pour l'administrateur, soi et ses copropriétaires sinon
 router.get('/', usersController.directory)
 router.post('/', requireAdmin, validate(createSchema), usersController.create)
+router.put('/:id/role', requireAdmin, validate(z.object({ role: z.enum(['ADMIN', 'USER']) })), usersController.setRole)
 router.put('/:id/password', requireAdmin, validate(z.object({ password: passwordSchema })), usersController.resetPassword)
 
 export default router

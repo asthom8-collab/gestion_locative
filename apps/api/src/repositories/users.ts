@@ -54,8 +54,21 @@ export const usersRepository = {
     return prisma.user.findUnique({ where: { id }, select: { passwordHash: true, sessionVersion: true } })
   },
 
+  /** Tous les comptes (administrateur), avec leur rôle. */
   directory() {
-    return prisma.user.findMany({ select: directorySelect, orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }] })
+    return prisma.user.findMany({ select: { ...directorySelect, role: true }, orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }] })
+  },
+
+  /** Soi-même et les copropriétaires (actuels ou passés) d'au moins un de ses biens. */
+  coOwners(userId: string) {
+    return prisma.user.findMany({
+      where: { OR: [{ id: userId }, { ownerships: { some: { property: { ownerships: { some: { userId } } } } } }] },
+      select: directorySelect, orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    })
+  },
+
+  setRole(id: string, role: Role) {
+    return prisma.user.update({ where: { id }, data: { role }, select: { ...directorySelect, role: true } })
   },
 
   existsByEmail(email: string) {

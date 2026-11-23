@@ -25,10 +25,11 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
 }
 
 /** Régularisation annuelle des charges du bail : calcul, enregistrement et décompte PDF. */
-export function RegularizationCard({ lease }: { lease: LeaseDetail }) {
+export function RegularizationCard({ lease, initialYear }: { lease: LeaseDetail; initialYear?: number }) {
   const years = leaseYears(lease)
   // Par défaut l'année précédente (la régularisation se fait une fois les charges de l'année connues)
-  const [year, setYear] = useState(() => years.includes(new Date().getFullYear() - 1) ? new Date().getFullYear() - 1 : years[years.length - 1])
+  const [year, setYear] = useState(() => initialYear && years.includes(initialYear) ? initialYear
+    : years.includes(new Date().getFullYear() - 1) ? new Date().getFullYear() - 1 : years[years.length - 1])
   const { data: p, error: loadError, isLoading } = useRegularizationPreview(lease.id, year)
   const createM = useCreateRegularization()
   const deleteM = useDeleteRegularization()
@@ -48,6 +49,22 @@ export function RegularizationCard({ lease }: { lease: LeaseDetail }) {
         </div>
       </div>
       <ErrorAlert message={error ?? (loadError instanceof Error ? loadError.message : null)} onClose={clear} />
+      {p?.existing && p.outdated && (
+        <div role="alert" className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 flex flex-wrap items-start gap-3">
+          <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-500" />
+          <div className="flex-1 min-w-[12rem]">
+            <div className="font-semibold">Régularisation {year} à refaire</div>
+            <div className="text-xs mt-0.5">
+              Les charges ou les provisions ont changé depuis l'enregistrement du {fmtDate(p.existing.createdAt)} :
+              solde enregistré {eur(p.existing.balance)}, solde recalculé {eur(p.balance)} (détail ci-dessous).
+              {p.existing.sentAt && ' Le décompte a déjà été envoyé au locataire : prévenez-le du changement.'}
+            </div>
+          </div>
+          <Button onClick={() => run(() => redoM.mutateAsync({ leaseId: lease.id, id: p.existing!.id, year }))} disabled={redoM.isPending}>
+            <RefreshCw size={15} />Mettre à jour la régularisation
+          </Button>
+        </div>
+      )}
       {isLoading || !p ? (isLoading && <p className="text-sm text-slate-400">Calcul…</p>) : p.charges.length === 0 ? (
         <p className="text-sm text-slate-500">
           Aucune charge saisie pour ce bien en {year}. <Link to={`/charges?year=${year}`} className="text-indigo-600 underline">Saisir les charges</Link>
@@ -95,22 +112,6 @@ export function RegularizationCard({ lease }: { lease: LeaseDetail }) {
               <Button onClick={() => run(() => createM.mutateAsync({ leaseId: lease.id, year }))} disabled={createM.isPending}><Check size={16} />Enregistrer la régularisation</Button>
             )}
           </div>
-          {p.existing && p.outdated && (
-            <div role="alert" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 flex flex-wrap items-start gap-3">
-              <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-500" />
-              <div className="flex-1 min-w-[12rem]">
-                <div className="font-semibold">Régularisation {year} à refaire</div>
-                <div className="text-xs mt-0.5">
-                  Les charges ou les provisions ont changé depuis l'enregistrement du {fmtDate(p.existing.createdAt)} :
-                  solde enregistré {eur(p.existing.balance)}, solde recalculé {eur(p.balance)} ci-dessus.
-                  {p.existing.sentAt && ' Le décompte a déjà été envoyé au locataire : prévenez-le du changement.'}
-                </div>
-              </div>
-              <Button onClick={() => run(() => redoM.mutateAsync({ leaseId: lease.id, id: p.existing!.id, year }))} disabled={redoM.isPending}>
-                <RefreshCw size={15} />Mettre à jour
-              </Button>
-            </div>
-          )}
         </>
       )}
     </Card>

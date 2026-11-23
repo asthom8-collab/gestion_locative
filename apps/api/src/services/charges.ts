@@ -1,7 +1,8 @@
 import { AppError } from '../middlewares/errorHandler'
 import { prisma } from '../lib/prisma'
 import { computeMonthlyDue, daysBetween, daysInYear, occupiedDaysInYear, overlapDays, periodBounds, round2 } from '../lib/period'
-import { allocate } from '../lib/ownership'
+import { allocate, ownersAt } from '../lib/ownership'
+import { Prisma } from '@prisma/client'
 import { renderRegularizationPdf } from '../lib/lettersPdf'
 import { chargesRepository, ChargeInput, findLeaseForDocuments, LeaseForDocuments, regularizationsRepository } from '../repositories/charges'
 import { landlordsFor } from './landlords'
@@ -65,13 +66,55 @@ async function staleness(lease: LeaseForDocuments, reg: StoredRegularization & {
   return { outdated, currentBalance: r.balance }
 }
 
+export const REGULARIZATION_OUTDATED_KIND = 'REGULARIZATION_OUTDATED'
+const yearKey = (year: number) => new Date(Date.UTC(year, 0, 1))
+const eur = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n)
+
+/** Retire les alertes « régularisation à refaire » d'un bail et d'une année (régularisation refaite, supprimée ou redevenue juste). */
+function clearOutdatedNotifications(leaseId: string, year: number) {
+  return prisma.notification.deleteMany({ where: { kind: REGULARIZATION_OUTDATED_KIND, leaseId, dueDate: yearKey(year) } })
+}
+
+/**
+ * Après une modification des charges d'un bien pour une année : pour chaque régularisation enregistrée devenue fausse,
+ * une notification (cloche) à chaque propriétaire actuel du bien, une seule fois par bail et par année ; si elle est
+ * redevenue juste, l'alerte est retirée.
+ */
+export async function checkRegularizations(propertyId: string, year: number, userId: string) {
+  const regs = await prisma.chargeRegularization.findMany({ where: { year, lease: { propertyId } } })
+  for (const reg of regs) {
+    const lease = await findLeaseForDocuments(reg.leaseId, userId)
+    if (!lease) continue
+    const s = await staleness(lease, reg)
+    if (!s.outdated) { await clearOutdatedNotifications(reg.leaseId, year); continue }
+    const tenant = `${lease.tenant.firstName} ${lease.tenant.lastName}`
+    const body = `Les charges ${year} de ${lease.property.name} ont changé depuis l'enregistrement de la régularisation de ${tenant} : `
+      + `solde enregistré ${eur(reg.balance)}${s.currentBalance != null ? `, recalculé ${eur(s.currentBalance)}` : ''}. `
+      + 'Ouvrez le bail et cliquez sur « Mettre à jour ».'
+    for (const o of ownersAt(lease.property.ownerships, new Date())) {
+      const where = { userId: o.userId, kind: REGULARIZATION_OUTDATED_KIND, leaseId: reg.leaseId, dueDate: yearKey(year) }
+      if (await prisma.notification.findFirst({ where, select: { id: true } })) continue // déjà signalée
+      try {
+        await prisma.notification.create({ data: {
+          userId: o.userId, kind: REGULARIZATION_OUTDATED_KIND, leaseId: reg.leaseId, dueDate: yearKey(year),
+          title: `Régularisation ${year} à refaire : ${tenant}`, body, link: `/leases/${reg.leaseId}`,
+        } })
+      } catch (e) {
+        if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002')) throw e // déjà signalée
+      }
+    }
+  }
+}
+
 export const chargesService = {
   list: (userId: string, filter: { year?: number; propertyId?: string }) => chargesRepository.findMany(userId, filter),
 
   async create(userId: string, data: ChargeInput) {
     const property = await prisma.property.findFirst({ where: { id: data.propertyId, ownerships: { some: { userId } } }, select: { id: true } })
     if (!property) throw new AppError(404, 'Bien introuvable')
-    return chargesRepository.create(data)
+    const charge = await chargesRepository.create(data)
+    await checkRegularizations(charge.propertyId, charge.year, userId)
+    return charge
   },
 
   /**
@@ -139,13 +182,17 @@ export const chargesService = {
   },
 
   async update(id: string, userId: string, data: Partial<Omit<ChargeInput, 'propertyId'>>) {
-    await chargeOrThrow(id, userId)
-    return chargesRepository.update(id, data)
+    const before = await chargeOrThrow(id, userId)
+    const charge = await chargesRepository.update(id, data)
+    await checkRegularizations(charge.propertyId, charge.year, userId)
+    if (before.year !== charge.year) await checkRegularizations(charge.propertyId, before.year, userId)
+    return charge
   },
 
   async remove(id: string, userId: string) {
-    await chargeOrThrow(id, userId)
+    const charge = await chargeOrThrow(id, userId)
     await chargesRepository.delete(id)
+    await checkRegularizations(charge.propertyId, charge.year, userId)
   },
 }
 
@@ -171,6 +218,7 @@ export const regularizationsService = {
     }
     const r = await compute(lease, year)
     if (!r.charges.length) throw new AppError(409, `Aucune charge saisie pour ce bien en ${year} (page Charges)`)
+    await clearOutdatedNotifications(leaseId, year)
     return regularizationsRepository.create({
       leaseId, year, occupiedDays: r.occupiedDays, daysInYear: r.daysInYear,
       totalCharged: r.totalCharged, totalReal: r.totalReal, balance: r.balance,
@@ -179,8 +227,10 @@ export const regularizationsService = {
 
   async remove(leaseId: string, id: string, userId: string) {
     await leaseOrThrow(leaseId, userId)
-    if (!(await regularizationsRepository.findById(id, leaseId))) throw new AppError(404, 'Régularisation introuvable')
+    const reg = await regularizationsRepository.findById(id, leaseId)
+    if (!reg) throw new AppError(404, 'Régularisation introuvable')
     await regularizationsRepository.delete(id)
+    await clearOutdatedNotifications(leaseId, reg.year)
   },
 
   /** Décompte de régularisation en PDF (recalcule le détail des charges, montants enregistrés). */

@@ -172,14 +172,16 @@ describe('fiche du bail', () => {
     const fetchMock = mockApi({
       '/api/leases/l1': detail(), '/api/rent-payments?leaseId=l1': [],
       ...phase4({ [`/api/leases/l1/regularizations/preview?year=${regYear}`]: regPreview({ existing, outdated: true }) }),
+      '/api/charges/outdated-regularizations': [{ id: 'g1', leaseId: 'l1', year: regYear, createdAt: existing.createdAt, tenantName: 'Jean Dupont', propertyName: 'T3', balance: 100, currentBalance: 130 }],
       'DELETE /api/leases/l1/regularizations/g1': { __reply: true, status: 204 },
       'POST /api/leases/l1/regularizations': { ...existing, id: 'g2', totalReal: 730, balance: 130 },
     })
     renderDetail()
+    expect(await screen.findByText(`Régularisation ${regYear} à refaire`, { selector: 'span' })).toBeInTheDocument() // bandeau en haut de la fiche
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent(`Régularisation ${regYear} à refaire`)
     expect(alert).toHaveTextContent(/solde enregistré 100,00 €, solde recalculé 130,00 €/)
-    fireEvent.click(screen.getByRole('button', { name: /Mettre à jour/ }))
+    fireEvent.click(screen.getByRole("button", { name: /Mettre à jour la régularisation/ }))
     await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => u === '/api/leases/l1/regularizations' && i?.method === 'POST')).toBe(true))
     expect(fetchMock.mock.calls.some(([u, i]) => u === '/api/leases/l1/regularizations/g1' && i?.method === 'DELETE')).toBe(true)
   })

@@ -1,9 +1,8 @@
 import { useRef, useState } from 'react'
 import { useMe, useSetSignature, useDeleteSignature, useUpdateMe } from '../../hooks/useMe'
 import { useTestNotification } from '../../hooks/useNotifications'
-import { useDirectory, useCreateUser, useResetPassword } from '../../hooks/useUsers'
+import { useDirectory, useCreateUser, useResetPassword, useSetRole } from '../../hooks/useUsers'
 import { useActionError } from '../../hooks/useActionError'
-import { useIrlIndexes, useSaveIrl } from '../../hooks/useRevisions'
 import { api } from '../../api/client'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -13,6 +12,7 @@ import { ErrorAlert } from '../../components/ui/ErrorAlert'
 import { PasswordForm } from '../../components/auth/PasswordForm'
 import { Check, PenLine, KeyRound, Users2, Upload, Trash2, Plus, Bell, Send } from '../../components/icons'
 import { fullName, initials } from '../../lib/format'
+import { ROLE_LABELS } from '../../types'
 import type { ChannelResult, CreateUserInput, DirectoryUser, NotificationTestResult, Profile, UpdateProfileInput } from '../../types'
 
 const MAX_SIGNATURE_BYTES = 300 * 1024
@@ -87,18 +87,22 @@ export function PasswordCard() {
   )
 }
 
-/** Administrateur : comptes des copropriétaires (création, mot de passe provisoire). */
+/**
+ * Administrateur : tous les comptes, leur rôle (administrateur, ou propriétaire qui ne voit que ses biens et ses
+ * copropriétaires), création avec mot de passe provisoire, réinitialisation.
+ */
 export function AccountsCard() {
   const { data: users = [] } = useDirectory()
   const { data: me } = useMe()
   const createM = useCreateUser()
   const resetM = useResetPassword()
+  const roleM = useSetRole()
   const modalErr = useActionError()
   const [creating, setCreating] = useState<CreateUserInput | null>(null)
   const [resetting, setResetting] = useState<{ user: DirectoryUser; password: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
 
-  const openCreate = () => { modalErr.clear(); setCreating({ email: '', firstName: '', lastName: '', password: temporaryPassword() }) }
+  const openCreate = () => { modalErr.clear(); setCreating({ email: '', firstName: '', lastName: '', password: temporaryPassword(), role: 'USER' }) }
   const saveCreate = async () => {
     if (!creating) return
     if (await modalErr.run(() => createM.mutateAsync(creating))) {
@@ -120,7 +124,11 @@ export function AccountsCard() {
         <h3 className="font-semibold text-slate-900 flex items-center gap-2"><Users2 size={17} className="text-indigo-600" />Comptes</h3>
         <Button variant="ghost" onClick={openCreate}><Plus size={15} />Nouveau compte</Button>
       </div>
-      <p className="text-sm text-slate-500 mb-4">Chaque copropriétaire a son propre compte et ne voit que les biens dont il est propriétaire.</p>
+      <p className="text-sm text-slate-500 mb-4">
+        Chaque copropriétaire a son propre compte. Un <strong>propriétaire</strong> ne voit que ses biens et ses copropriétaires ;
+        un <strong>administrateur</strong> voit en plus tous les comptes et les gère.
+      </p>
+      <ErrorAlert message={roleM.error?.message ?? null} onClose={() => roleM.reset()} />
       {notice && (
         <div role="status" className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</div>
       )}
@@ -134,11 +142,20 @@ export function AccountsCard() {
                 <div className="text-xs text-slate-500 truncate">{u.email}</div>
               </div>
             </div>
-            {u.id !== me?.id && (
-              <button className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 shrink-0"
-                onClick={() => { modalErr.clear(); setResetting({ user: u, password: temporaryPassword() }) }}>
-                Réinitialiser le mot de passe
-              </button>
+            {u.id === me?.id ? (
+              <span className="text-xs px-2 py-1 rounded-full bg-indigo-50 text-indigo-700 font-medium shrink-0">{ROLE_LABELS[u.role ?? 'ADMIN']}</span>
+            ) : (
+              <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+                <select aria-label={`Rôle de ${fullName(u)}`} className={`${fieldCls} text-xs py-1.5`} value={u.role ?? 'USER'} disabled={roleM.isPending}
+                  onChange={e => roleM.mutate({ id: u.id, role: e.target.value as 'ADMIN' | 'USER' })}>
+                  <option value="USER">{ROLE_LABELS.USER}</option>
+                  <option value="ADMIN">{ROLE_LABELS.ADMIN}</option>
+                </select>
+                <button className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  onClick={() => { modalErr.clear(); setResetting({ user: u, password: temporaryPassword() }) }}>
+                  Réinitialiser le mot de passe
+                </button>
+              </div>
             )}
           </div>
         ))}
@@ -153,6 +170,12 @@ export function AccountsCard() {
           </div>
           <Field label="E-mail (identifiant de connexion)"><input className={inputCls} type="email" value={creating.email} onChange={e => setCreating({ ...creating, email: e.target.value })} /></Field>
           <Field label="Mot de passe provisoire"><input className={inputCls} value={creating.password} onChange={e => setCreating({ ...creating, password: e.target.value })} /></Field>
+          <Field label="Rôle">
+            <select className={inputCls} value={creating.role ?? 'USER'} onChange={e => setCreating({ ...creating, role: e.target.value as 'ADMIN' | 'USER' })}>
+              <option value="USER">{ROLE_LABELS.USER} : voit ses biens et ses copropriétaires</option>
+              <option value="ADMIN">{ROLE_LABELS.ADMIN} : voit et gère aussi tous les comptes</option>
+            </select>
+          </Field>
           <div className="flex justify-end"><Button onClick={saveCreate} disabled={createM.isPending}><Check size={16} />Créer le compte</Button></div>
         </Modal>
       )}
@@ -163,49 +186,6 @@ export function AccountsCard() {
           <p className="text-xs text-slate-500 -mt-1 mb-3">Ses sessions ouvertes seront fermées, et il devra choisir un nouveau mot de passe à la connexion.</p>
           <div className="flex justify-end"><Button onClick={saveReset} disabled={resetM.isPending}><Check size={16} />Réinitialiser</Button></div>
         </Modal>
-      )}
-    </Card>
-  )
-}
-
-/** Indices de référence des loyers (INSEE), saisis à la main et communs à tous les comptes. */
-export function IrlCard() {
-  const { data: indexes = [] } = useIrlIndexes()
-  const saveM = useSaveIrl()
-  const { error, run, clear } = useActionError()
-  const now = new Date()
-  const [form, setForm] = useState({ quarter: 2, year: now.getFullYear(), value: '' })
-  const save = async () => {
-    if (await run(() => saveM.mutateAsync({ quarter: form.quarter, year: form.year, value: Number(form.value) }))) setForm({ ...form, value: '' })
-  }
-  return (
-    <Card className="p-5">
-      <h3 className="font-semibold tracking-tight mb-1">Indices de référence des loyers (IRL)</h3>
-      <p className="text-xs text-slate-500 mb-3">Valeurs publiées par l'INSEE chaque trimestre, utilisées pour réviser les loyers. Saisir à nouveau un trimestre corrige sa valeur.</p>
-      <ErrorAlert message={error} onClose={clear} />
-      <div className="flex flex-wrap gap-2 items-end mb-3">
-        <label className="text-xs text-slate-500">Trimestre
-          <select aria-label="Trimestre" className={`${fieldCls} mt-1 block`} value={form.quarter} onChange={e => setForm({ ...form, quarter: Number(e.target.value) })}>
-            {[1, 2, 3, 4].map(q => <option key={q} value={q}>T{q}</option>)}
-          </select>
-        </label>
-        <label className="text-xs text-slate-500">Année
-          <input aria-label="Année" type="number" className={`${fieldCls} mt-1 w-24`} value={form.year} onChange={e => setForm({ ...form, year: Number(e.target.value) })} />
-        </label>
-        <label className="text-xs text-slate-500">Valeur
-          <input aria-label="Valeur" type="number" step="0.01" className={`${fieldCls} mt-1 w-28`} value={form.value} onChange={e => setForm({ ...form, value: e.target.value })} />
-        </label>
-        <Button onClick={save} disabled={!form.value || saveM.isPending}>Enregistrer</Button>
-      </div>
-      {indexes.length === 0 ? <p className="text-sm text-slate-400">Aucun indice saisi.</p> : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
-          {indexes.map(i => (
-            <div key={i.id} className="rounded-lg border border-slate-200 px-3 py-2 flex justify-between">
-              <span className="text-slate-500">T{i.quarter} {i.year}</span>
-              <span className="font-medium">{i.value.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}</span>
-            </div>
-          ))}
-        </div>
       )}
     </Card>
   )

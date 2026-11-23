@@ -16,3 +16,11 @@ export function useCreateUser() {
 
 export const useResetPassword = () =>
   useMutation({ mutationFn: ({ id, password }: { id: string; password: string }) => api.users.resetPassword(id, password) })
+
+export function useSetRole() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, role }: { id: string; role: 'ADMIN' | 'USER' }) => api.users.setRole(id, role),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  })
+}

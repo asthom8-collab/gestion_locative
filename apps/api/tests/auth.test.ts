@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from 'vitest'
 import request from 'supertest'
 import { hash } from 'bcrypt'
 import { app } from '../src/app'
-import { api, resetDb, prisma, cookieFor } from './helpers'
+import { api, resetDb, prisma, cookieFor, createProperty } from './helpers'
 import { DEV_USER_ID } from '../src/lib/devUser'
 import { createSessionToken, readSessionToken } from '../src/lib/auth'
 
@@ -91,14 +91,38 @@ describe('comptes créés par l’administrateur', () => {
     await api(sessionFrom(changed)!.split(';')[0]).get('/api/properties').expect(200)
   })
 
-  it('réservé aux administrateurs (403), annuaire accessible à tous', async () => {
+  it('création, mot de passe et rôle réservés aux administrateurs (403)', async () => {
     const claire = await prisma.user.create({ data: { email: 'claire@local.dev', firstName: 'Claire', lastName: 'Copro', passwordHash: 'x' } })
     const cookie = cookieFor(claire.id)
     await api(cookie).post('/api/users').send({ email: 'x@local.dev', firstName: 'X', lastName: 'Y', password: 'provisoire-123' }).expect(403)
     await api(cookie).put(`/api/users/${DEV_USER_ID}/password`).send({ password: 'provisoire-123' }).expect(403)
-    const dir = await api(cookie).get('/api/users').expect(200)
-    expect(dir.body.map((u: { email: string }) => u.email).sort()).toEqual(['admin@local.dev', 'claire@local.dev'])
-    expect(Object.keys(dir.body[0]).sort()).toEqual(['email', 'firstName', 'id', 'lastName'])
+    await api(cookie).put(`/api/users/${DEV_USER_ID}/role`).send({ role: 'USER' }).expect(403)
+  })
+
+  it('annuaire : l’administrateur voit tous les comptes et leur rôle, un propriétaire seulement ses copropriétaires', async () => {
+    const claire = await prisma.user.create({ data: { email: 'claire@local.dev', firstName: 'Claire', lastName: 'Copro', passwordHash: 'x' } })
+    const paul = await prisma.user.create({ data: { email: 'paul@local.dev', firstName: 'Paul', lastName: 'Autre', passwordHash: 'x' } })
+    const emails = (body: { email: string }[]) => body.map((u) => u.email).sort()
+    const all = (await api().get('/api/users').expect(200)).body
+    expect(emails(all)).toEqual(['admin@local.dev', 'claire@local.dev', 'paul@local.dev'])
+    expect(Object.keys(all[0]).sort()).toEqual(['email', 'firstName', 'id', 'lastName', 'role'])
+
+    // Claire ne voit qu'elle-même, puis l'admin une fois copropriétaire d'un de ses biens ; jamais Paul
+    expect(emails((await api(cookieFor(claire.id)).get('/api/users').expect(200)).body)).toEqual(['claire@local.dev'])
+    const p = await createProperty()
+    await api().put(`/api/properties/${p.id}/owners`).send({ owners: [{ userId: DEV_USER_ID, share: 0.5 }, { userId: claire.id, share: 0.5 }] }).expect(200)
+    const dir = (await api(cookieFor(claire.id)).get('/api/users').expect(200)).body
+    expect(emails(dir)).toEqual(['admin@local.dev', 'claire@local.dev'])
+    expect(Object.keys(dir[0]).sort()).toEqual(['email', 'firstName', 'id', 'lastName'])
+    expect(emails((await api(cookieFor(paul.id)).get('/api/users').expect(200)).body)).toEqual(['paul@local.dev'])
+  })
+
+  it('l’administrateur change le rôle d’un compte, pas le sien', async () => {
+    const claire = await prisma.user.create({ data: { email: 'claire@local.dev', firstName: 'Claire', lastName: 'Copro', passwordHash: 'x' } })
+    expect((await api().put(`/api/users/${claire.id}/role`).send({ role: 'ADMIN' }).expect(200)).body).toMatchObject({ id: claire.id, role: 'ADMIN' })
+    await api(cookieFor(claire.id)).post('/api/users').send({ email: 'x@local.dev', firstName: 'X', lastName: 'Y', password: 'provisoire-123' }).expect(201)
+    await api().put(`/api/users/${DEV_USER_ID}/role`).send({ role: 'USER' }).expect(400)
+    await api().put(`/api/users/${claire.id}/role`).send({ role: 'ROOT' }).expect(400)
   })
 
   it('l’administrateur réinitialise un mot de passe : sessions fermées, mot de passe provisoire', async () => {

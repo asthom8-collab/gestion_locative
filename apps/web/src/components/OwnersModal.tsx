@@ -114,7 +114,7 @@ export function OwnersModal({ property, onClose }: { property: Property; onClose
         </select>
       )}
       {available.length === 0 && users.length <= 1 && (
-        <p className="text-xs text-slate-500 mb-3">Pour ajouter un copropriétaire, l'administrateur doit d'abord lui créer un compte (page Propriétaires → Comptes).</p>
+        <p className="text-xs text-slate-500 mb-3">Pour ajouter un copropriétaire, l'administrateur doit d'abord lui créer un compte (Paramètres → Comptes).</p>
       )}
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm">

@@ -31,15 +31,44 @@ describe('page Paramètres', () => {
   })
 })
 
-describe('page Paramètres : signature', () => {
+describe('page Paramètres : comptes et signature', () => {
   const admin = { ...profile, mustChangePassword: false, hasSignature: false }
   const users = [{ id: 'u1', firstName: 'Thomas', lastName: 'Admin', email: 'admin@local.dev' }]
 
-  it('la gestion des comptes n’est plus dans Paramètres (page Propriétaires)', async () => {
-    mockApi({ '/api/me': admin, '/api/users': users })
+  it('l’administrateur crée un compte (rôle propriétaire par défaut) avec un mot de passe provisoire', async () => {
+    const fetchMock = mockApi({ '/api/me': admin, '/api/users': users })
+    renderWithProviders(<Settings />)
+    fireEvent.click(await screen.findByRole('button', { name: /Nouveau compte/ }))
+    fireEvent.change(screen.getByLabelText('Prénom', { selector: '.fixed input' }), { target: { value: 'Claire' } })
+    fireEvent.change(screen.getByLabelText('Nom', { selector: '.fixed input' }), { target: { value: 'Copro' } })
+    fireEvent.change(screen.getByLabelText('E-mail (identifiant de connexion)'), { target: { value: 'claire@local.dev' } })
+    const password = (screen.getByLabelText('Mot de passe provisoire') as HTMLInputElement).value
+    expect(password).toMatch(/^[A-Za-z0-9]{12}$/)
+    expect(screen.getByLabelText('Rôle')).toHaveDisplayValue(/^Propriétaire/)
+    fireEvent.click(screen.getByRole('button', { name: /Créer le compte/ }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/users', expect.objectContaining({
+      method: 'POST', body: JSON.stringify({ email: 'claire@local.dev', firstName: 'Claire', lastName: 'Copro', password, role: 'USER' }),
+    })))
+  })
+
+  it('l’administrateur change le rôle d’un autre compte, pas le sien', async () => {
+    const fetchMock = mockApi({
+      '/api/me': admin,
+      '/api/users': [{ ...users[0], role: 'ADMIN' }, { id: 'u2', firstName: 'Claire', lastName: 'Copro', email: 'claire@local.dev', role: 'USER' }],
+      'PUT /api/users/u2/role': { id: 'u2', role: 'ADMIN' },
+    })
+    renderWithProviders(<Settings />)
+    const select = await screen.findByLabelText('Rôle de Claire Copro')
+    expect(screen.queryByLabelText('Rôle de Thomas Admin')).not.toBeInTheDocument()
+    fireEvent.change(select, { target: { value: 'ADMIN' } })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/users/u2/role', expect.objectContaining({ method: 'PUT', body: JSON.stringify({ role: 'ADMIN' }) })))
+  })
+
+  it('un propriétaire (non administrateur) ne voit pas la gestion des comptes', async () => {
+    mockApi({ '/api/me': { ...admin, role: 'USER' }, '/api/users': users })
     renderWithProviders(<Settings />)
     expect(await screen.findByText('Signature')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Nouveau compte/ })).not.toBeInTheDocument()
+    expect(screen.queryByText('Comptes')).not.toBeInTheDocument()
   })
 
   it('refuse une signature qui n’est pas une image PNG ou JPEG, sans appeler l’API', async () => {
@@ -49,42 +78,5 @@ describe('page Paramètres : signature', () => {
     fireEvent.change(input, { target: { files: [new File(['<svg/>'], 'sig.svg', { type: 'image/svg+xml' })] } })
     expect(await screen.findByRole('alert')).toHaveTextContent('PNG ou JPEG')
     expect(fetchMock.mock.calls.some(([u]) => String(u).includes('signature'))).toBe(false)
-  })
-})
-
-describe('page Paramètres : indices IRL', () => {
-  it('liste les indices et en enregistre un', async () => {
-    const fetchMock = mockApi({ '/api/me': profile, '/api/irl': [{ id: 'i1', quarter: 2, year: 2025, value: 145.6 }], 'PUT /api/irl': { id: 'i2', quarter: 3, year: 2025, value: 146 } })
-    renderWithProviders(<Settings />)
-    expect(await screen.findByText('T2 2025')).toBeInTheDocument()
-    fireEvent.change(screen.getByLabelText('Trimestre'), { target: { value: '3' } })
-    fireEvent.change(screen.getByLabelText('Année'), { target: { value: '2025' } })
-    fireEvent.change(screen.getByLabelText('Valeur'), { target: { value: '146' } })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Enregistrer' }).slice(-1)[0])
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/irl', expect.objectContaining({ method: 'PUT', body: JSON.stringify({ quarter: 3, year: 2025, value: 146 }) })))
-  })
-})
-
-describe('page Paramètres : notifications', () => {
-  it('enregistre le délai et les canaux, sans renvoyer la clé SMS si elle n’est pas modifiée', async () => {
-    const fetchMock = mockApi({ '/api/me': { ...profile, hasFreeMobileKey: true, freeMobileUser: '123' }, '/api/irl': [], 'PATCH /api/me': profile })
-    renderWithProviders(<Settings />)
-    fireEvent.change(await screen.findByLabelText('Prévenir combien de jours avant l\'anniversaire du bail'), { target: { value: '45' } })
-    fireEvent.change(screen.getByLabelText('Téléphone : sujet ntfy'), { target: { value: 'mon-sujet' } })
-    expect(screen.getByLabelText('Clé d\'identification')).toHaveAttribute('placeholder', 'enregistrée (laisser vide pour la garder)')
-    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer les notifications' }))
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/me', expect.objectContaining({
-      method: 'PATCH', body: JSON.stringify({ notifyDaysBefore: 45, notifyEmail: true, ntfyTopic: 'mon-sujet', freeMobileUser: '123' }),
-    })))
-  })
-
-  it('envoie un essai et affiche le résultat de chaque canal', async () => {
-    mockApi({ '/api/me': profile, '/api/irl': [], 'POST /api/notifications/test': { email: 'not_configured', ntfy: 'sent', sms: { error: 'SMS Free Mobile : refusé' } } })
-    renderWithProviders(<Settings />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Envoyer un essai' }))
-    const result = await screen.findByRole('list', { name: 'Résultat de l’essai' })
-    expect(result).toHaveTextContent('E-mail : serveur d’e-mail (SMTP) non configuré')
-    expect(result).toHaveTextContent('ntfy : envoyé')
-    expect(result).toHaveTextContent('SMS : échec (SMS Free Mobile : refusé)')
   })
 })

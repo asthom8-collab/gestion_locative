@@ -15,7 +15,8 @@ export const irlRepository = {
     return prisma.irlIndex.upsert({
       where: { quarter_year: { quarter, year } },
       create: { quarter, year, value },
-      update: { value },
+      // Saisie à la main : la valeur n'est plus celle importée de l'INSEE
+      update: { value, source: 'MANUAL', publishedAt: null },
     })
   },
 }

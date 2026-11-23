@@ -290,11 +290,15 @@ model RentRevision {
 // ─────────────────────────────────────────
 
 model IrlIndex {
-  id        String   @id @default(cuid())
-  quarter   Int
-  year      Int
-  value     Float
-  createdAt DateTime @default(now())
+  id          String    @id @default(cuid())
+  quarter     Int
+  year        Int
+  value       Float
+  // INSEE (import automatique depuis la BDM) ou MANUAL (saisi à la main)
+  source      String    @default("MANUAL")
+  // Date de publication au Journal officiel (import INSEE)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
 
   @@unique([quarter, year])
 }

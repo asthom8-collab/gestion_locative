@@ -9,7 +9,7 @@ import { Button } from '../components/ui/Button'
 import { inputCls } from '../components/ui/Field'
 import { ErrorAlert } from '../components/ui/ErrorAlert'
 import { PropTypeIcon } from '../components/ui/PropTypeIcon'
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Check, X, KeyRound } from '../components/icons'
+import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Check, X, KeyRound, AlertCircle, CircleCheck, Wallet } from '../components/icons'
 import { eur, fmtDate } from '../lib/format'
 import type { Charge, ChargeAllocation, Property } from '../types'
 
@@ -122,6 +122,29 @@ const inYear = (t: ChargeAllocation['tenants'][number], year: number) => {
   return s || e ? period(s, e) : 'toute l’année'
 }
 
+const badgeCls = 'shrink-0 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold border shadow-sm transition-colors'
+
+/** État de la régularisation du bail : faite, à faire, ou à refaire (charges modifiées depuis). */
+function RegularizationBadge({ t }: { t: ChargeAllocation['tenants'][number] }) {
+  const r = t.regularization
+  if (r?.outdated) return (
+    <Link to={`/leases/${t.leaseId}`} className={`${badgeCls} bg-amber-500 border-amber-600 text-white hover:bg-amber-600`}
+      title={`Solde enregistré ${eur(r.balance)}${r.currentBalance != null ? `, recalculé ${eur(r.currentBalance)}` : ''}`}>
+      <AlertCircle size={15} />Régularisation à refaire
+    </Link>
+  )
+  if (r) return (
+    <Link to={`/leases/${t.leaseId}`} className={`${badgeCls} bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100`}>
+      <CircleCheck size={15} />Régularisée
+    </Link>
+  )
+  return (
+    <Link to={`/leases/${t.leaseId}`} className={`${badgeCls} bg-indigo-600 border-indigo-700 text-white hover:bg-indigo-700`}>
+      <Wallet size={15} />Régulariser
+    </Link>
+  )
+}
+
 /**
  * Répartition des charges de l'année d'un bien :
  * - entre locataires : part refacturable de chaque bail (jours occupés dans la période de chaque charge), provisions
@@ -137,7 +160,7 @@ function Allocation({ a, year }: { a: ChargeAllocation; year: number }) {
       {a.tenants.length === 0 ? <p className="text-sm text-slate-400">Aucun bail sur {year}.</p> : (
         <div className="divide-y divide-slate-100 text-sm">
           {a.tenants.map(t => (
-            <div key={t.leaseId} className="py-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+            <div key={t.leaseId} className={`py-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 ${t.regularization?.outdated ? 'bg-amber-50 -mx-2 px-2 rounded-lg' : ''}`}>
               <div className="min-w-0">
                 <Link to={`/leases/${t.leaseId}`} className="font-medium text-indigo-600 underline">{t.tenantName}</Link>
                 <span className="text-slate-400 text-xs"> · {inYear(t, year)} ({t.occupiedDays} j)</span>
@@ -147,16 +170,7 @@ function Allocation({ a, year }: { a: ChargeAllocation; year: number }) {
                   {t.missingMonths.length > 0 && <span className="text-amber-700"> · {t.missingMonths.length} mois sans échéance générée</span>}
                 </div>
               </div>
-              {t.regularization?.outdated ? (
-                <Link to={`/leases/${t.leaseId}`} title={`Solde enregistré ${eur(t.regularization.balance)}${t.regularization.currentBalance != null ? `, recalculé ${eur(t.regularization.currentBalance)}` : ''}`}
-                  className="text-xs shrink-0 rounded-full px-2 py-0.5 bg-amber-100 text-amber-800 font-medium">
-                  Régularisation à refaire
-                </Link>
-              ) : (
-                <Link to={`/leases/${t.leaseId}`} className={`text-xs shrink-0 rounded-full px-2 py-0.5 ${t.regularization ? 'bg-emerald-50 text-emerald-700' : 'bg-indigo-50 text-indigo-700'}`}>
-                  {t.regularization ? 'Régularisée' : 'Régulariser'}
-                </Link>
-              )}
+              <RegularizationBadge t={t} />
             </div>
           ))}
           {a.vacancy > 0 && (

@@ -47,7 +47,18 @@ export const usersService = {
     return usersRepository.setPassword(id, await hash(newPassword, BCRYPT_ROUNDS), false)
   },
 
-  directory: () => usersRepository.directory(),
+  /**
+   * Annuaire : l'administrateur voit tous les comptes (et leur rôle) ; un propriétaire ne voit que lui-même et
+   * les copropriétaires de ses biens.
+   */
+  directory: (userId: string, role: Role) => (role === 'ADMIN' ? usersRepository.directory() : usersRepository.coOwners(userId)),
+
+  /** Change le rôle d'un compte ; on ne change pas le sien (pas de risque de perdre le dernier administrateur). */
+  async setRole(adminId: string, id: string, role: Role) {
+    if (id === adminId) throw new AppError(400, 'Vous ne pouvez pas changer votre propre rôle')
+    await usersService.getProfile(id)
+    return usersRepository.setRole(id, role)
+  },
 
   /** Compte créé par un administrateur : mot de passe provisoire, à changer à la première connexion. */
   async createUser(data: { email: string; firstName: string; lastName: string; password: string; role?: Role }) {
