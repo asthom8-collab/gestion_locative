@@ -10,11 +10,12 @@ const profile = {
 }
 
 describe('page Paramètres', () => {
-  it('charge le profil et enregistre l’adresse du bailleur', async () => {
+  it('charge le profil et enregistre l’adresse e-mail et l’adresse du bailleur', async () => {
     const fetchMock = mockApi({ '/api/me': profile, '/api/irl': [] })
     renderWithProviders(<Settings />)
 
     expect(await screen.findByDisplayValue('Thomas')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/^E-mail/), { target: { value: 'thomas@exemple.fr' } })
     fireEvent.change(screen.getByLabelText('Adresse'), { target: { value: '5 place Bellecour' } })
     fireEvent.change(screen.getByLabelText('Code postal'), { target: { value: '69002' } })
     fireEvent.change(screen.getByLabelText('Ville'), { target: { value: 'Lyon' } })
@@ -23,7 +24,7 @@ describe('page Paramètres', () => {
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith('/api/me', expect.objectContaining({
         method: 'PATCH',
-        body: JSON.stringify({ firstName: 'Thomas', lastName: 'Admin', address: '5 place Bellecour', zipCode: '69002', city: 'Lyon' }),
+        body: JSON.stringify({ email: 'thomas@exemple.fr', firstName: 'Thomas', lastName: 'Admin', address: '5 place Bellecour', zipCode: '69002', city: 'Lyon' }),
       }))
     )
     expect(await screen.findByText('Enregistré')).toBeInTheDocument()

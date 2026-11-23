@@ -38,6 +38,7 @@ export function useSetOwners() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, owners }: { id: string; owners: OwnerInput[] }) => api.properties.setOwners(id, owners),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['properties'] }),
+    // Les quotes-parts et les dates de détention changent la répartition des charges et les régularisations
+    onSuccess: () => Promise.all(['properties', 'charges', 'regularizations'].map(k => qc.invalidateQueries({ queryKey: [k] }))),
   })
 }

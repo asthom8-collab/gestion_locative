@@ -12,6 +12,8 @@ const optionalText = z.string().trim().max(200).transform((s) => (s === '' ? nul
 const updateSchema = z.object({
   firstName: z.string().trim().min(1).max(100).optional(),
   lastName: z.string().trim().min(1).max(100).optional(),
+  // Identifiant de connexion et adresse des notifications par e-mail
+  email: z.string().trim().toLowerCase().email().max(200).optional(),
   address: optionalText,
   zipCode: optionalText,
   city: optionalText,

@@ -32,6 +32,13 @@ describe('page Charges', () => {
     })))
   })
 
+  it('ouvre les propriétaires et dates de détention du bien depuis sa carte', async () => {
+    mockApi({ '/api/properties': props, '/api/charges?year=2025': [], '/api/users': [] })
+    render()
+    fireEvent.click(await screen.findByRole('button', { name: /dates de détention de Parking/ }))
+    expect(await screen.findByText('Propriétaires — Parking')).toBeInTheDocument()
+  })
+
   it('répartit les charges entre locataires (fin de bail, vacance) et entre propriétaires successifs', async () => {
     const tenant = (over: Record<string, unknown>) => ({
       leaseId: 'l1', tenantName: 'Jean Dupont', startDate: '2024-01-01T00:00:00.000Z', endDate: '2025-03-31T00:00:00.000Z', occupiedDays: 90,

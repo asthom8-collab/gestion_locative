@@ -71,7 +71,7 @@ middlewares/   validate, errorHandler (AppError → JSON { error }, zod → 400 
 | `PUT /api/rent-payments/:id/payment`, `DELETE /api/rent-payments/:id/payment` | Saisit ou annule un encaissement |
 | `DELETE /api/rent-payments/:id` | Supprime une échéance non payée |
 | `POST /api/rent-payments/:id/receipt`, `GET /api/rent-payments/:id/receipt[?download]` | Génère ou télécharge la quittance PDF |
-| `GET/PATCH /api/me` | Profil et adresse du bailleur (avec `role`, `mustChangePassword`, `hasSignature`) |
+| `GET/PATCH /api/me` | Profil et adresse du bailleur (avec `role`, `mustChangePassword`, `hasSignature`) ; `email` modifiable (minuscules, 409 si déjà pris), il sert d'identifiant et d'adresse des notifications |
 | `PUT /api/me/password` | Change son mot de passe (ferme les autres sessions) |
 | `GET/PUT/DELETE /api/me/signature` | Image de sa signature (PNG ou JPEG en data URL, 300 Ko au plus) |
 | `GET /api/users` | Annuaire (id, nom, e-mail) pour choisir les copropriétaires |

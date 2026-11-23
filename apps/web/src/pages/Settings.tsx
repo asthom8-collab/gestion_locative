@@ -7,7 +7,7 @@ import { Button } from '../components/ui/Button'
 import { Field, inputCls } from '../components/ui/Field'
 import { Check } from '../components/icons'
 
-type Form = { firstName: string; lastName: string; address: string; zipCode: string; city: string }
+type Form = { email: string; firstName: string; lastName: string; address: string; zipCode: string; city: string }
 
 export function Settings() {
   const { data: me, isLoading } = useMe()
@@ -18,6 +18,7 @@ export function Settings() {
   useEffect(() => {
     if (me && !form) {
       setForm({
+        email: me.email,
         firstName: me.firstName,
         lastName: me.lastName,
         address: me.address ?? '',
@@ -53,6 +54,9 @@ export function Settings() {
           <Field label="Prénom"><input className={inputCls} value={form.firstName} onChange={set('firstName')} /></Field>
           <Field label="Nom"><input className={inputCls} value={form.lastName} onChange={set('lastName')} /></Field>
         </div>
+        <Field label="E-mail (identifiant de connexion, reçoit les notifications)">
+          <input className={inputCls} type="email" value={form.email} onChange={set('email')} />
+        </Field>
         <Field label="Adresse"><input className={inputCls} value={form.address} onChange={set('address')} /></Field>
         <div className="grid grid-cols-3 gap-3">
           <Field label="Code postal"><input className={inputCls} value={form.zipCode} onChange={set('zipCode')} /></Field>
@@ -63,7 +67,7 @@ export function Settings() {
         {updateM.error && <p role="alert" className="text-sm text-rose-600 mb-3">{updateM.error.message}</p>}
         <div className="flex items-center justify-end gap-3">
           {saved && <span className="text-sm text-emerald-600">Enregistré</span>}
-          <Button onClick={save} disabled={updateM.isPending || !form.firstName.trim() || !form.lastName.trim()}>
+          <Button onClick={save} disabled={updateM.isPending || !form.email.trim() || !form.firstName.trim() || !form.lastName.trim()}>
             <Check size={16} />Enregistrer
           </Button>
         </div>

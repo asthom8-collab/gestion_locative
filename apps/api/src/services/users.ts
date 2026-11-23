@@ -24,7 +24,10 @@ export const usersService = {
   },
 
   async updateProfile(id: string, data: UpdateProfileInput) {
-    await usersService.getProfile(id)
+    const current = await usersService.getProfile(id)
+    if (data.email !== undefined && data.email !== current.email && await usersRepository.existsByEmail(data.email)) {
+      throw new AppError(409, 'Un compte existe déjà avec cet e-mail')
+    }
     return present(await usersRepository.update(id, data))
   },
 

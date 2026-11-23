@@ -134,13 +134,15 @@ export function Properties() {
                     </div>
                     {owners.length > 0 && (
                       <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
-                        <UserCircle2 size={11} />
-                        {owners.map(o => `${fullName(o.user)}${owners.length > 1 ? ` (${Math.round(o.share * 100)} %)` : ''}`).join(' · ')}
+                        <UserCircle2 size={11} className="shrink-0" />
+                        <span className="truncate">{owners.map(o => `${fullName(o.user)}${owners.length > 1 ? ` (${Math.round(o.share * 100)} %)` : ''}`).join(' · ')}</span>
                       </div>
                     )}
+                    <button onClick={() => setOwners(p)} className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">
+                      <Users2 size={13} />Propriétaires et dates de détention<span className="sr-only"> de {p.name}</span>
+                    </button>
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    <button onClick={() => setOwners(p)} aria-label={`Propriétaires de ${p.name}`} title="Propriétaires" className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><Users2 size={15} /></button>
                     <button onClick={() => openEdit(p)} aria-label={`Modifier ${p.name}`} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><Pencil size={15} /></button>
                     <button onClick={() => remove(p)} aria-label={`Supprimer ${p.name}`} className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600"><Trash2 size={15} /></button>
                   </div>

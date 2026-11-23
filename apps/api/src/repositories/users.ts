@@ -23,6 +23,7 @@ export const publicUserSelect = {
 export const directorySelect = { id: true, firstName: true, lastName: true, email: true } as const
 
 export type UpdateProfileInput = {
+  email?: string
   firstName?: string
   lastName?: string
   address?: string | null

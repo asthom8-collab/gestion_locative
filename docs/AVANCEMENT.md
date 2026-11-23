@@ -4,21 +4,20 @@
 > Détails des phases livrées et journal : [HISTORIQUE.md](HISTORIQUE.md) (à consulter au besoin, à compléter en fin de session).
 > Description technique (API, modèle de données, règles métier, tests) : [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## ▶ Reprise — état au 2026-11-22
+## ▶ Reprise — état au 2026-11-23
 
 ### Où en est le code
 - `main` (= `origin/main`) : phases 2 et 4, refonte du front, multipropriétaires.
 - Branche locale `phase4b-notifications` (non poussée) : phase 4 bis (notifications avant l'anniversaire des baux,
-  charges par trimestre, quotes-parts datées). `npm run verify` : 104 tests API, 68 tests front.
+  charges par trimestre, quotes-parts datées). `npm run verify` : 106 tests API, 69 tests front.
   Choix, avancement et retours du premier test : HISTORIQUE.md § Phase 4 bis.
 
 ### Second test de la phase 4 bis (Thomas, 2026-11-22)
 - [x] Rappel de révision : alerte visible sur le tableau de bord et dans la cloche.
 - [x] SMS Free Mobile : sans objet (Thomas n'est pas chez Free).
 - [ ] ntfy : sujet dans Paramètres → Notifications, puis « Envoyer un essai » (application ntfy sur le téléphone, abonnée au même sujet).
-- [ ] Dates de détention : bouton **Propriétaires** (icône « personnes » sur la carte du bien, page Biens) → champs
-  « Propriétaire depuis le / jusqu'au ». Thomas ne l'a pas trouvé : rendre l'accès plus visible (bouton avec libellé,
-  et lien depuis la fiche du bien ou la page Charges).
+- [ ] Dates de détention : lien **« Propriétaires et dates de détention »** sur chaque carte (page Biens) et sur chaque
+  bien de la page Charges (corrigé le 2026-11-23 : l'icône seule n'était pas trouvée) → « Propriétaire depuis le / jusqu'au ».
 - [ ] Charges par trimestre : saisie, répartition entre propriétaires, part de chaque locataire, régularisation.
 - [ ] E-mail : configurer le SMTP (démarche ci-dessous).
 
@@ -38,14 +37,13 @@ L'API envoie les e-mails par SMTP (`nodemailer`, `apps/api/src/lib/notifiers.ts`
    ```
    Pour le conteneur `api`, mettre les mêmes variables dans le `.env` de la racine et les passer dans `docker-compose.yml`.
 4. Redémarrer l'API, puis Paramètres → Notifications : cocher l'e-mail et « Envoyer un essai ».
-5. **Point à corriger** : l'e-mail part à l'adresse du compte (`User.email`), qui n'est pas modifiable dans Paramètres
-   (`/api/me` ne l'accepte pas). Le compte du seed est `admin@local.dev` : ajouter la modification de l'adresse e-mail
-   (avec contrôle d'unicité) avant le test.
+5. L'e-mail part à l'adresse du compte, modifiable dans Paramètres → Identité du bailleur (corrigé le 2026-11-23).
+   **Attention** : c'est aussi l'identifiant de connexion (le compte du seed est `admin@local.dev`).
 Autres fournisseurs possibles : celui de la messagerie de Thomas (paramètres SMTP fournis par l'opérateur), ou un service
 d'envoi (Brevo, gratuit jusqu'à 300 e-mails par jour). Seules les cinq variables changent.
 
 ### Prochaines étapes, dans l'ordre
-1. Finir le second test (cases ci-dessus), avec les deux corrections : accès visible aux dates de détention, adresse e-mail modifiable.
+1. Finir le second test (cases ci-dessus) ; les deux corrections demandées sont faites (2026-11-23).
 2. Fusionner `phase4b-notifications` dans `main` et pousser.
 3. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, blocage AppArmor, puis `docker compose up -d --build`), avec `SESSION_SECRET` et le SMTP.
 4. Suite : phase 3 (rapprochement bancaire) ou écrans restants de la maquette (Paiements, Synchro bancaire, Impôts,

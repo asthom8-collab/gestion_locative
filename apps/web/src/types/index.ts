@@ -175,7 +175,7 @@ export interface CreateUserInput {
   role?: 'ADMIN' | 'USER'
 }
 
-export type UpdateProfileInput = Partial<Pick<Profile, 'firstName' | 'lastName' | 'address' | 'zipCode' | 'city' | 'notifyDaysBefore' | 'notifyEmail' | 'ntfyTopic' | 'freeMobileUser'>> & {
+export type UpdateProfileInput = Partial<Pick<Profile, 'email' | 'firstName' | 'lastName' | 'address' | 'zipCode' | 'city' | 'notifyDaysBefore' | 'notifyEmail' | 'ntfyTopic' | 'freeMobileUser'>> & {
   /** Clé SMS Free Mobile : chaîne vide pour l'effacer, absente pour la garder */
   freeMobileKey?: string | null
 }

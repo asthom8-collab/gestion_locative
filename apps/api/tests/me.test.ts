@@ -22,6 +22,19 @@ describe('/api/me', () => {
     expect(cleared.body.address).toBeNull()
   })
 
+  it('change l’adresse e-mail, enregistrée en minuscules', async () => {
+    const res = await api().patch('/api/me').send({ email: ' Thomas@Exemple.FR ' }).expect(200)
+    expect(res.body.email).toBe('thomas@exemple.fr')
+    expect(await prisma.user.count({ where: { email: 'thomas@exemple.fr' } })).toBe(1)
+  })
+
+  it('refuse une adresse e-mail invalide (400) ou déjà prise (409)', async () => {
+    await api().patch('/api/me').send({ email: 'pas-une-adresse' }).expect(400)
+    await prisma.user.create({ data: { email: 'autre@exemple.fr', firstName: 'A', lastName: 'B', passwordHash: 'x' } })
+    await api().patch('/api/me').send({ email: 'autre@exemple.fr' }).expect(409)
+    await api().patch('/api/me').send({ email: 'admin@local.dev' }).expect(200)
+  })
+
   it('refuse un prénom vide (400)', async () => {
     await api().patch('/api/me').send({ firstName: '' }).expect(400)
   })
