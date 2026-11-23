@@ -16,16 +16,16 @@
   source). Import **automatique** depuis l'INSEE chaque jour (40 trimestres déjà importés) + « Vérifier maintenant ».
 - [ ] **Comptes** : de retour dans Paramètres (administrateur), deux rôles : Administrateur / Propriétaire (un
   propriétaire ne voit que lui-même et ses copropriétaires). Rôle au choix à la création, modifiable ensuite.
-- [ ] **Régularisation à refaire** : exemple en base, bien « Démo régularisation » (locataire Camille Exemple, eau
+- [x] **Régularisation à refaire** (validé par Thomas le 2026-11-23) : exemple en base, bien « Démo régularisation » (locataire Camille Exemple, eau
   passée de 360 à 450 € après la régularisation 2025). À voir : tableau de bord, cloche, badge orange (Charges),
   bandeau en haut de la fiche du bail → « Voir et mettre à jour » → « Mettre à jour la régularisation ».
-- [ ] **Badges** de la page Charges plus visibles (Régulariser / Régularisée / Régularisation à refaire).
+- [x] **Badges** de la page Charges plus visibles (« c'est super ») (Régulariser / Régularisée / Régularisation à refaire).
 - [ ] ntfy : sujet dans Paramètres → Notifications, puis « Envoyer un essai ».
-- [x] E-mail : SMTP Gmail en place, essai envoyé par Claude le 2026-11-23 (vérifier la réception).
+- [x] E-mail : SMTP Gmail en place, notification reçue par Thomas (le second compte a une adresse fictive : échec normal).
 - [x] Onglet Propriétaires validé (« très bien, on part là-dessus »). Charges par trimestre et prorata validés.
 
 ### Prochaines étapes, dans l'ordre
-1. Retours de Thomas sur la liste ci-dessus.
+1. Retours de Thomas sur les cases restantes (indices IRL, comptes et rôles, ntfy).
 2. Fusionner `phase4b-notifications` dans `main` et pousser.
 3. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, blocage AppArmor, puis `docker compose up -d --build`),
    avec `SESSION_SECRET` et les cinq variables `SMTP_*` (à copier de `apps/api/.env` dans le `.env` de la racine et à
