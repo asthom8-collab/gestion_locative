@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../../api/client'
-import { useRegularizationPreview, useCreateRegularization, useDeleteRegularization } from '../../hooks/useCharges'
+import { useRegularizationPreview, useCreateRegularization, useDeleteRegularization, useRedoRegularization } from '../../hooks/useCharges'
 import { useActionError } from '../../hooks/useActionError'
 import { Card } from '../ui/Card'
 import { Button } from '../ui/Button'
 import { ErrorAlert } from '../ui/ErrorAlert'
-import { Wallet, FileText, Trash2, ChevronLeft, ChevronRight, Check } from '../icons'
+import { Wallet, FileText, Trash2, ChevronLeft, ChevronRight, Check, AlertCircle, RefreshCw } from '../icons'
 import { eur, fmtDate } from '../../lib/format'
 import type { LeaseDetail } from '../../types'
 
@@ -32,6 +32,7 @@ export function RegularizationCard({ lease }: { lease: LeaseDetail }) {
   const { data: p, error: loadError, isLoading } = useRegularizationPreview(lease.id, year)
   const createM = useCreateRegularization()
   const deleteM = useDeleteRegularization()
+  const redoM = useRedoRegularization()
   const { error, run, clear } = useActionError()
   if (!years.length) return null
   const idx = years.indexOf(year)
@@ -94,8 +95,21 @@ export function RegularizationCard({ lease }: { lease: LeaseDetail }) {
               <Button onClick={() => run(() => createM.mutateAsync({ leaseId: lease.id, year }))} disabled={createM.isPending}><Check size={16} />Enregistrer la régularisation</Button>
             )}
           </div>
-          {p.existing && (p.existing.totalReal !== p.totalReal || p.existing.totalCharged !== p.totalCharged) && (
-            <p className="text-xs text-amber-700 mt-2">Les charges ou les provisions ont changé depuis l'enregistrement : supprimez puis refaites la régularisation pour la mettre à jour.</p>
+          {p.existing && p.outdated && (
+            <div role="alert" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 flex flex-wrap items-start gap-3">
+              <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-500" />
+              <div className="flex-1 min-w-[12rem]">
+                <div className="font-semibold">Régularisation {year} à refaire</div>
+                <div className="text-xs mt-0.5">
+                  Les charges ou les provisions ont changé depuis l'enregistrement du {fmtDate(p.existing.createdAt)} :
+                  solde enregistré {eur(p.existing.balance)}, solde recalculé {eur(p.balance)} ci-dessus.
+                  {p.existing.sentAt && ' Le décompte a déjà été envoyé au locataire : prévenez-le du changement.'}
+                </div>
+              </div>
+              <Button onClick={() => run(() => redoM.mutateAsync({ leaseId: lease.id, id: p.existing!.id, year }))} disabled={redoM.isPending}>
+                <RefreshCw size={15} />Mettre à jour
+              </Button>
+            </div>
           )}
         </>
       )}

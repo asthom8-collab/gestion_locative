@@ -13,6 +13,7 @@ import { Leases } from './pages/Leases'
 import { LeaseDetail } from './pages/LeaseDetail'
 import { Rents } from './pages/Rents'
 import { Charges } from './pages/Charges'
+import { Owners } from './pages/Owners'
 import { Notifications } from './pages/Notifications'
 import { Settings } from './pages/Settings'
 
@@ -44,6 +45,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/properties" element={<Properties />} />
+                <Route path="/owners" element={<Owners />} />
                 <Route path="/tenants" element={<Tenants />} />
                 <Route path="/leases" element={<Leases />} />
                 <Route path="/leases/:id" element={<LeaseDetail />} />

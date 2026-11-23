@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useProperties, useCreateProperty, useUpdateProperty, useDeleteProperty } from '../hooks/useProperties'
 import { useActionError } from '../hooks/useActionError'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -10,8 +11,7 @@ import { Field, inputCls } from '../components/ui/Field'
 import { Empty } from '../components/ui/Empty'
 import { ErrorAlert } from '../components/ui/ErrorAlert'
 import { PropTypeIcon } from '../components/ui/PropTypeIcon'
-import { OwnersModal } from '../components/OwnersModal'
-import { Building2, Plus, Pencil, Trash2, MapPin, Check, ChevronRight, ClipboardList, UserCircle2, Users2 } from '../components/icons'
+import { Building2, Plus, Pencil, Trash2, MapPin, Check, ChevronRight, ClipboardList, UserCircle2 } from '../components/icons'
 import { eur, fmtMonth, fullName, PROPERTY_TYPE_LABELS, FISCAL_REGIMES } from '../lib/format'
 import type { CreatePropertyInput, Lease, Property, PropertyType, FiscalRegime } from '../types'
 
@@ -82,7 +82,6 @@ export function Properties() {
 
   const [modal, setModal] = useState<'create' | Property | null>(null)
   const [form, setForm] = useState<CreatePropertyInput>(blank)
-  const [owners, setOwners] = useState<Property | null>(null)
 
   const openCreate = () => { modalErr.clear(); setForm(blank); setModal('create') }
   const openEdit = (p: Property) => {
@@ -133,14 +132,11 @@ export function Properties() {
                       {fiscal.badge && <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium ${fiscal.color}`}>{fiscal.badge}</span>}
                     </div>
                     {owners.length > 0 && (
-                      <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                      <Link to={`/owners?property=${p.id}`} title="Voir les propriétaires de ce bien" className="text-xs text-slate-400 hover:text-indigo-600 mt-0.5 flex items-center gap-1">
                         <UserCircle2 size={11} className="shrink-0" />
                         <span className="truncate">{owners.map(o => `${fullName(o.user)}${owners.length > 1 ? ` (${Math.round(o.share * 100)} %)` : ''}`).join(' · ')}</span>
-                      </div>
+                      </Link>
                     )}
-                    <button onClick={() => setOwners(p)} className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">
-                      <Users2 size={13} />Propriétaires et dates de détention<span className="sr-only"> de {p.name}</span>
-                    </button>
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <button onClick={() => openEdit(p)} aria-label={`Modifier ${p.name}`} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><Pencil size={15} /></button>
@@ -154,7 +150,6 @@ export function Properties() {
         </div>
       )}
 
-      {owners && <OwnersModal property={owners} onClose={() => setOwners(null)} />}
 
       {modal && (
         <Modal title={modal === 'create' ? 'Nouveau bien' : 'Modifier le bien'} onClose={() => setModal(null)}>

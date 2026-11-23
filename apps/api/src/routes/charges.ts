@@ -24,6 +24,10 @@ router.get('/', validateQuery(listSchema), handle(async (req, res) => {
 router.get('/allocation', validateQuery(z.object({ year: z.coerce.number().int().min(2000).max(2100) })), handle(async (req, res) => {
   res.json(await chargesService.allocation(currentUser(req).id, Number(req.query.year)))
 }))
+// Régularisations enregistrées qui ne correspondent plus aux charges ou aux provisions (alerte du tableau de bord)
+router.get('/outdated-regularizations', handle(async (req, res) => {
+  res.json(await chargesService.outdatedRegularizations(currentUser(req).id))
+}))
 router.post('/', validate(createSchema), handle(async (req, res) => {
   res.status(201).json(await chargesService.create(currentUser(req).id, req.body))
 }))

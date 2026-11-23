@@ -29,7 +29,7 @@ const revisionPreview = (over: Record<string, unknown> = {}) => ({
 const regYear = new Date().getFullYear() - 1
 const regPreview = (over: Record<string, unknown> = {}) => ({
   year: regYear, occupiedDays: 365, daysInYear: 365, charges: [{ id: 'c1', label: 'Eau', amount: 730, share: 730 }],
-  totalCharges: 730, totalReal: 730, totalCharged: 600, balance: 130, missingMonths: [], suggestedMonthlyCharges: 60.83, existing: null, ...over,
+  totalCharges: 730, totalReal: 730, totalCharged: 600, balance: 130, missingMonths: [], suggestedMonthlyCharges: 60.83, existing: null, outdated: false, ...over,
 })
 // Routes des cartes Révision et Régularisation
 const phase4 = (over: Record<string, unknown> = {}) => ({
@@ -164,5 +164,23 @@ describe('fiche du bail', () => {
     })
     renderDetail()
     expect(await screen.findByRole('link', { name: /Décompte/ })).toHaveAttribute('href', '/api/leases/l1/regularizations/g1/statement')
+    expect(screen.queryByText(/à refaire/)).not.toBeInTheDocument()
+  })
+
+  it('régularisation périmée (charges modifiées après coup) : alerte et mise à jour en un clic', async () => {
+    const existing = { id: 'g1', leaseId: 'l1', year: regYear, occupiedDays: 365, daysInYear: 365, totalCharged: 600, totalReal: 700, balance: 100, sentAt: null, createdAt: '2026-02-01T00:00:00.000Z' }
+    const fetchMock = mockApi({
+      '/api/leases/l1': detail(), '/api/rent-payments?leaseId=l1': [],
+      ...phase4({ [`/api/leases/l1/regularizations/preview?year=${regYear}`]: regPreview({ existing, outdated: true }) }),
+      'DELETE /api/leases/l1/regularizations/g1': { __reply: true, status: 204 },
+      'POST /api/leases/l1/regularizations': { ...existing, id: 'g2', totalReal: 730, balance: 130 },
+    })
+    renderDetail()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(`Régularisation ${regYear} à refaire`)
+    expect(alert).toHaveTextContent(/solde enregistré 100,00 €, solde recalculé 130,00 €/)
+    fireEvent.click(screen.getByRole('button', { name: /Mettre à jour/ }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([u, i]) => u === '/api/leases/l1/regularizations' && i?.method === 'POST')).toBe(true))
+    expect(fetchMock.mock.calls.some(([u, i]) => u === '/api/leases/l1/regularizations/g1' && i?.method === 'DELETE')).toBe(true)
   })
 })

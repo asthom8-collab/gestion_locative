@@ -57,6 +57,7 @@ export const api = {
       request<T.Charge>(`/charges/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
     delete: (id: string) => request<void>(`/charges/${id}`, { method: 'DELETE' }),
     allocation: (year: number) => request<T.ChargeAllocation[]>(`/charges/allocation?year=${year}`),
+    outdatedRegularizations: () => request<T.OutdatedRegularization[]>('/charges/outdated-regularizations'),
   },
   regularizations: {
     list: (leaseId: string) => request<T.ChargeRegularization[]>(`/leases/${leaseId}/regularizations`),

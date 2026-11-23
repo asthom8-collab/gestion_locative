@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react'
 import { useProperties } from '../hooks/useProperties'
 import { useLeases } from '../hooks/useLeases'
 import { useRentPayments } from '../hooks/useRentPayments'
+import { useOutdatedRegularizations } from '../hooks/useCharges'
 import { PageHeader } from '../components/ui/PageHeader'
 import { StatCard } from '../components/ui/StatCard'
 import { Card } from '../components/ui/Card'
@@ -11,9 +12,9 @@ import { Empty } from '../components/ui/Empty'
 import { PaymentStatusBadge } from '../components/ui/PaymentStatusBadge'
 import { PropTypeIcon } from '../components/ui/PropTypeIcon'
 import {
-  Building2, CircleCheck, CircleDashed, Euro, CalendarCheck, AlertCircle, Receipt,
+  Building2, CircleCheck, CircleDashed, Euro, CalendarCheck, AlertCircle, Receipt, Wallet,
 } from '../components/icons'
-import type { Lease, RentPayment } from '../types'
+import type { Lease, OutdatedRegularization, RentPayment } from '../types'
 
 const eur = (n: number) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n)
 const fmtDate = (d: Date) => d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
@@ -59,7 +60,7 @@ export function coversMonth(l: Pick<Lease, 'startDate' | 'endDate' | 'active'>, 
   return l.endDate ? new Date(l.endDate).getTime() >= start : l.active
 }
 
-export function buildAlerts(leases: Lease[], current: RentPayment[], now: Date, cur: Ym): Alert[] {
+export function buildAlerts(leases: Lease[], current: RentPayment[], now: Date, cur: Ym, outdated: OutdatedRegularization[] = []): Alert[] {
   const active = leases.filter(l => l.active)
   const alerts: Alert[] = []
   const rentsLink = `/rents?year=${cur.year}&month=${cur.month}`
@@ -80,6 +81,15 @@ export function buildAlerts(leases: Lease[], current: RentPayment[], now: Date, 
       level: 'amber', Icon: Receipt, title: `Échéances de ${ymLabel(cur).toLowerCase()} à générer`,
       body: `${due.length} ${due.length > 1 ? 'baux' : 'bail'} sans échéance pour ce mois.`,
       action: { label: 'Générer le mois', to: rentsLink },
+    })
+
+  // Régularisations enregistrées devenues fausses : charges ou provisions modifiées après coup
+  for (const r of outdated)
+    alerts.push({
+      level: 'amber', Icon: Wallet, title: `Régularisation ${r.year} à refaire — ${r.propertyName}`,
+      body: `${r.tenantName} · Les charges ou les provisions ont changé depuis l'enregistrement : solde enregistré ${eur(r.balance)}`
+        + (r.currentBalance != null ? `, recalculé ${eur(r.currentBalance)}.` : ', le bail ne couvre plus cette année.'),
+      action: { label: 'Voir le bail', to: `/leases/${r.leaseId}` },
     })
 
   for (const l of active) {
@@ -124,12 +134,13 @@ export function Dashboard() {
   const { data: leases = [] } = useLeases()
   const { data: current = [] } = useRentPayments(cur.year, cur.month)
   const { data: rows = [], isLoading } = useRentPayments(selected.year, selected.month)
+  const { data: outdated = [] } = useOutdatedRegularizations()
 
   const active = leases.filter(l => l.active)
   const occupied = properties.filter(p => active.some(l => l.propertyId === p.id)).length
   const income = active.reduce((s, l) => s + l.rentAmount + l.chargesAmount, 0)
   const paid = current.filter(p => p.status === 'RECEIVED').length
-  const alerts = buildAlerts(leases, current, now, cur)
+  const alerts = buildAlerts(leases, current, now, cur, outdated)
   const propType = (id: string) => properties.find(p => p.id === id)?.type
   const months = selectableMonths(now)
 

@@ -247,7 +247,9 @@ export interface ChargeAllocation {
   total: number
   tenants: {
     leaseId: string; tenantName: string; startDate: string; endDate: string | null; occupiedDays: number
-    share: number; provisions: number; balance: number; missingMonths: number[]; regularization: { id: string; balance: number } | null
+    share: number; provisions: number; balance: number; missingMonths: number[]
+    /** outdated : les charges ou les provisions ont changé depuis l'enregistrement ; currentBalance : solde recalculé */
+    regularization: { id: string; balance: number; outdated: boolean; currentBalance: number | null } | null
   }[]
   /** Part des charges tombant pendant la vacance (non refacturable) */
   vacancy: number
@@ -277,4 +279,11 @@ export interface RegularizationPreview {
   missingMonths: number[]
   suggestedMonthlyCharges: number
   existing: ChargeRegularization | null
+  /** La régularisation enregistrée ne correspond plus au calcul ci-dessus */
+  outdated: boolean
+}
+/** Régularisation enregistrée qui ne correspond plus aux charges ou aux provisions (alerte) */
+export interface OutdatedRegularization {
+  id: string; leaseId: string; year: number; createdAt: string; tenantName: string; propertyName: string
+  balance: number; currentBalance: number | null
 }

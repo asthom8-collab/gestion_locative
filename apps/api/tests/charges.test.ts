@@ -69,6 +69,34 @@ describe('régularisation des charges', () => {
     await api().delete(`/api/leases/${lease.id}/regularizations/${reg.id}`).expect(204)
   })
 
+  it('signale une régularisation périmée quand une charge est ajoutée, modifiée ou supprimée après coup', async () => {
+    const { p, lease } = await setup({ startDate: '2025-01-01T00:00:00.000Z' })
+    const eau = (await addCharge(p.id, 'Eau', 365).expect(201)).body
+    const reg = (await api().post(`/api/leases/${lease.id}/regularizations`).send({ year: 2026 }).expect(201)).body
+    const outdated = async () => (await api().get('/api/charges/outdated-regularizations').expect(200)).body
+    const preview = async () => (await api().get(`/api/leases/${lease.id}/regularizations/preview?year=2026`).expect(200)).body
+    expect(await outdated()).toEqual([])
+    expect((await preview()).outdated).toBe(false)
+
+    await api().patch(`/api/charges/${eau.id}`).send({ amount: 400 }).expect(200)
+    expect(await outdated()).toMatchObject([{ id: reg.id, leaseId: lease.id, year: 2026, balance: 365, currentBalance: 400 }])
+    expect((await preview()).outdated).toBe(true)
+    const alloc = (await api().get('/api/charges/allocation?year=2026').expect(200)).body
+    expect(alloc[0].tenants[0].regularization).toMatchObject({ id: reg.id, outdated: true, balance: 365, currentBalance: 400 })
+
+    await api().patch(`/api/charges/${eau.id}`).send({ amount: 365 }).expect(200)
+    expect(await outdated()).toEqual([])
+    const tom = (await addCharge(p.id, 'Ordures', 50).expect(201)).body
+    expect(await outdated()).toHaveLength(1)
+    await api().delete(`/api/charges/${tom.id}`).expect(204)
+    await api().delete(`/api/charges/${eau.id}`).expect(204)
+    expect(await outdated()).toMatchObject([{ id: reg.id, currentBalance: 0 }])
+
+    // Un autre propriétaire ne voit pas l'alerte
+    const other = await createUser()
+    expect((await api(other.cookie).get('/api/charges/outdated-regularizations').expect(200)).body).toEqual([])
+  })
+
   it('refuse une année que le bail ne couvre pas, et l’accès d’un autre propriétaire', async () => {
     const { lease } = await setup()
     await api().get(`/api/leases/${lease.id}/regularizations/preview?year=2025`).expect(400)

@@ -9,8 +9,7 @@ import { Button } from '../components/ui/Button'
 import { inputCls } from '../components/ui/Field'
 import { ErrorAlert } from '../components/ui/ErrorAlert'
 import { PropTypeIcon } from '../components/ui/PropTypeIcon'
-import { OwnersModal } from '../components/OwnersModal'
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Check, X, Users2 } from '../components/icons'
+import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2, Check, X, KeyRound } from '../components/icons'
 import { eur, fmtDate } from '../lib/format'
 import type { Charge, ChargeAllocation, Property } from '../types'
 
@@ -79,7 +78,6 @@ function PropertyCharges({ property, year, charges, allocation }: { property: Pr
   const [label, setLabel] = useState('')
   const [amount, setAmount] = useState('')
   const [quarter, setQuarter] = useState<number | null>(null)
-  const [ownersOpen, setOwnersOpen] = useState(false)
   const total = charges.reduce((s, c) => s + c.amount, 0)
   const add = async () => {
     if (await run(() => createM.mutateAsync({ propertyId: property.id, year, quarter, label: label.trim(), amount: Number(amount) }))) { setLabel(''); setAmount('') }
@@ -92,10 +90,9 @@ function PropertyCharges({ property, year, charges, allocation }: { property: Pr
         <h3 className="font-semibold tracking-tight flex items-center gap-2 min-w-0"><PropTypeIcon type={property.type} size={16} /><span className="truncate">{property.name}</span></h3>
         <span className="text-sm text-slate-500 shrink-0">Total {eur(total)}</span>
       </div>
-      <button onClick={() => setOwnersOpen(true)} className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">
-        <Users2 size={13} />Propriétaires, quotes-parts et dates de détention<span className="sr-only"> de {property.name}</span>
-      </button>
-      {ownersOpen && <OwnersModal property={property} onClose={() => setOwnersOpen(false)} />}
+      <Link to={`/owners?property=${property.id}`} className="mb-2 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700">
+        <KeyRound size={13} />Propriétaires et quotes-parts<span className="sr-only"> de {property.name}</span>
+      </Link>
       <ErrorAlert message={error} onClose={clear} />
       {charges.length === 0 ? <p className="text-sm text-slate-400 py-2">Aucune charge saisie pour {year}.</p> : (
         <div className="divide-y divide-slate-100">{charges.map(c => <ChargeLine key={c.id} c={c} />)}</div>
@@ -150,9 +147,16 @@ function Allocation({ a, year }: { a: ChargeAllocation; year: number }) {
                   {t.missingMonths.length > 0 && <span className="text-amber-700"> · {t.missingMonths.length} mois sans échéance générée</span>}
                 </div>
               </div>
-              <Link to={`/leases/${t.leaseId}`} className={`text-xs shrink-0 rounded-full px-2 py-0.5 ${t.regularization ? 'bg-emerald-50 text-emerald-700' : 'bg-indigo-50 text-indigo-700'}`}>
-                {t.regularization ? 'Régularisée' : 'Régulariser'}
-              </Link>
+              {t.regularization?.outdated ? (
+                <Link to={`/leases/${t.leaseId}`} title={`Solde enregistré ${eur(t.regularization.balance)}${t.regularization.currentBalance != null ? `, recalculé ${eur(t.regularization.currentBalance)}` : ''}`}
+                  className="text-xs shrink-0 rounded-full px-2 py-0.5 bg-amber-100 text-amber-800 font-medium">
+                  Régularisation à refaire
+                </Link>
+              ) : (
+                <Link to={`/leases/${t.leaseId}`} className={`text-xs shrink-0 rounded-full px-2 py-0.5 ${t.regularization ? 'bg-emerald-50 text-emerald-700' : 'bg-indigo-50 text-indigo-700'}`}>
+                  {t.regularization ? 'Régularisée' : 'Régulariser'}
+                </Link>
+              )}
             </div>
           ))}
           {a.vacancy > 0 && (

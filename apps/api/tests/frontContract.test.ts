@@ -100,11 +100,17 @@ describe('contrat API ↔ front', () => {
     const charge = (await api().post('/api/charges').send({ propertyId: p.id, year: 2025, label: 'Eau', amount: 300 }).expect(201)).body
     expect(keys(charge)).toEqual(expect.arrayContaining(['id', 'propertyId', 'year', 'quarter', 'label', 'amount']))
     const reg = (await api().get(`/api/leases/${lease.id}/regularizations/preview?year=2025`).expect(200)).body
-    expect(keys(reg)).toEqual(['charges', 'daysInYear', 'existing', 'missingMonths', 'occupiedDays', 'suggestedMonthlyCharges', 'totalCharged', 'totalCharges', 'totalReal', 'year', 'balance'].sort())
+    expect(keys(reg)).toEqual(['charges', 'daysInYear', 'existing', 'missingMonths', 'occupiedDays', 'outdated', 'suggestedMonthlyCharges', 'totalCharged', 'totalCharges', 'totalReal', 'year', 'balance'].sort())
     expect(keys(reg.charges[0])).toEqual(['amount', 'id', 'label', 'occupiedDays', 'periodDays', 'quarter', 'share'])
     await api().post(`/api/leases/${lease.id}/regularizations`).send({ year: 2025 }).expect(201)
     const [saved] = (await api().get(`/api/leases/${lease.id}/regularizations`)).body
     expect(keys(saved)).toEqual(expect.arrayContaining(['id', 'leaseId', 'year', 'occupiedDays', 'daysInYear', 'totalCharged', 'totalReal', 'balance', 'sentAt', 'createdAt']))
+    // Charge modifiée après coup : la régularisation enregistrée est signalée (OutdatedRegularization)
+    await api().patch(`/api/charges/${charge.id}`).send({ amount: 400 }).expect(200)
+    const [stale] = (await api().get('/api/charges/outdated-regularizations').expect(200)).body
+    expect(keys(stale)).toEqual(['balance', 'createdAt', 'currentBalance', 'id', 'leaseId', 'propertyName', 'tenantName', 'year'])
+    const [alloc] = (await api().get('/api/charges/allocation?year=2025').expect(200)).body
+    expect(keys(alloc.tenants[0].regularization)).toEqual(['balance', 'currentBalance', 'id', 'outdated'])
   })
 
   it('notifications, quotes-parts datées et répartition des charges', async () => {

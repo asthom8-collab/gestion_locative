@@ -9,17 +9,19 @@
 ### Où en est le code
 - `main` (= `origin/main`) : phases 2 et 4, refonte du front, multipropriétaires.
 - Branche locale `phase4b-notifications` (non poussée) : phase 4 bis (notifications avant l'anniversaire des baux,
-  charges par trimestre, quotes-parts datées). `npm run verify` : 106 tests API, 69 tests front.
+  charges par trimestre, quotes-parts datées). `npm run verify` : 107 tests API, 74 tests front.
   Choix, avancement et retours du premier test : HISTORIQUE.md § Phase 4 bis.
 
 ### Second test de la phase 4 bis (Thomas, 2026-11-22)
 - [x] Rappel de révision : alerte visible sur le tableau de bord et dans la cloche.
 - [x] SMS Free Mobile : sans objet (Thomas n'est pas chez Free).
 - [ ] ntfy : sujet dans Paramètres → Notifications, puis « Envoyer un essai » (application ntfy sur le téléphone, abonnée au même sujet).
-- [ ] Dates de détention : lien **« Propriétaires et dates de détention »** sur chaque carte (page Biens) et sur chaque
-  bien de la page Charges (corrigé le 2026-11-23 : l'icône seule n'était pas trouvée) → « Propriétaire depuis le / jusqu'au ».
-- [ ] Charges par trimestre : saisie, répartition entre propriétaires, part de chaque locataire, régularisation.
-- [ ] E-mail : configurer le SMTP (démarche ci-dessous).
+- [ ] Propriétaires : nouvel onglet **Propriétaires** (menu Patrimoine, 2026-11-23, à la demande de Thomas) : par bien,
+  quotes-parts, dates de détention, statut ; « Modifier » ouvre la fenêtre ; comptes des copropriétaires déplacés depuis Paramètres.
+- [x] Charges par trimestre : saisie, prorata (« ont l'air de bien fonctionner », Thomas, 2026-11-23).
+- [ ] Régularisation périmée (demande du 2026-11-23) : modifier une charge après l'enregistrement → alerte sur le tableau
+  de bord, badge « Régularisation à refaire » (Charges), bandeau « Mettre à jour » dans le bail.
+- [ ] E-mail : mot de passe d'application Gmail créé par Thomas ; bloc SMTP préparé dans `apps/api/.env`, à compléter (démarche ci-dessous).
 
 ### Configurer l'e-mail (SMTP), démarche
 L'API envoie les e-mails par SMTP (`nodemailer`, `apps/api/src/lib/notifiers.ts`). Sans `SMTP_HOST`, aucun e-mail ne part
@@ -43,7 +45,7 @@ Autres fournisseurs possibles : celui de la messagerie de Thomas (paramètres SM
 d'envoi (Brevo, gratuit jusqu'à 300 e-mails par jour). Seules les cinq variables changent.
 
 ### Prochaines étapes, dans l'ordre
-1. Finir le second test (cases ci-dessus) ; les deux corrections demandées sont faites (2026-11-23).
+1. Finir le second test (cases ci-dessus).
 2. Fusionner `phase4b-notifications` dans `main` et pousser.
 3. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, blocage AppArmor, puis `docker compose up -d --build`), avec `SESSION_SECRET` et le SMTP.
 4. Suite : phase 3 (rapprochement bancaire) ou écrans restants de la maquette (Paiements, Synchro bancaire, Impôts,

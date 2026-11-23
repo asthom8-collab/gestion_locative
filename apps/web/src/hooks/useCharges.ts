@@ -7,6 +7,10 @@ export const useCharges = (year: number) => useQuery({ queryKey: ['charges', yea
 export const useChargeAllocation = (year: number) =>
   useQuery({ queryKey: ['charges', 'allocation', year], queryFn: () => api.charges.allocation(year) })
 
+/** Régularisations enregistrées devenues fausses (charges ou provisions modifiées depuis). */
+export const useOutdatedRegularizations = () =>
+  useQuery({ queryKey: ['charges', 'outdated'], queryFn: () => api.charges.outdatedRegularizations() })
+
 function useChargeMutation<V>(fn: (v: V) => Promise<unknown>) {
   const qc = useQueryClient()
   return useMutation({
@@ -33,3 +37,9 @@ export const useCreateRegularization = () =>
   useChargeMutation(({ leaseId, year }: { leaseId: string; year: number }) => api.regularizations.create(leaseId, year))
 export const useDeleteRegularization = () =>
   useChargeMutation(({ leaseId, id }: { leaseId: string; id: string }) => api.regularizations.delete(leaseId, id))
+/** Refait une régularisation périmée avec les montants actuels (suppression puis nouvel enregistrement). */
+export const useRedoRegularization = () =>
+  useChargeMutation(async ({ leaseId, id, year }: { leaseId: string; id: string; year: number }) => {
+    await api.regularizations.delete(leaseId, id)
+    return api.regularizations.create(leaseId, year)
+  })

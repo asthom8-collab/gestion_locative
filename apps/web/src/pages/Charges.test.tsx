@@ -32,11 +32,22 @@ describe('page Charges', () => {
     })))
   })
 
-  it('ouvre les propriétaires et dates de détention du bien depuis sa carte', async () => {
-    mockApi({ '/api/properties': props, '/api/charges?year=2025': [], '/api/users': [] })
+  it('renvoie vers la page Propriétaires pour chaque bien', async () => {
+    mockApi({ '/api/properties': props, '/api/charges?year=2025': [] })
     render()
-    fireEvent.click(await screen.findByRole('button', { name: /dates de détention de Parking/ }))
-    expect(await screen.findByText('Propriétaires — Parking')).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: /Propriétaires et quotes-parts de Parking/ })).toHaveAttribute('href', '/owners?property=p2')
+  })
+
+  it('signale une régularisation à refaire (charges modifiées depuis)', async () => {
+    mockApi({
+      '/api/properties': props, '/api/charges?year=2025': [],
+      '/api/charges/allocation?year=2025': [{ propertyId: 'p1', propertyName: 'Studio', total: 400, vacancy: 0, owners: [], tenants: [{
+        leaseId: 'l1', tenantName: 'Jean Dupont', startDate: '2024-01-01T00:00:00.000Z', endDate: null, occupiedDays: 365,
+        share: 400, provisions: 300, balance: 100, missingMonths: [], regularization: { id: 'r1', balance: 65, outdated: true, currentBalance: 100 },
+      }] }],
+    })
+    render()
+    expect(await screen.findByRole('link', { name: 'Régularisation à refaire' })).toHaveAttribute('href', '/leases/l1')
   })
 
   it('répartit les charges entre locataires (fin de bail, vacance) et entre propriétaires successifs', async () => {
@@ -49,7 +60,7 @@ describe('page Charges', () => {
       '/api/charges/allocation?year=2025': [
         { propertyId: 'p1', propertyName: 'Studio', total: 1065, vacancy: 365, tenants: [
           tenant({}),
-          tenant({ leaseId: 'l2', tenantName: 'Paul Durand', startDate: '2025-07-01T00:00:00.000Z', endDate: null, occupiedDays: 184, share: 600, provisions: 650, balance: -50, regularization: { id: 'r1', balance: -50 } }),
+          tenant({ leaseId: 'l2', tenantName: 'Paul Durand', startDate: '2025-07-01T00:00:00.000Z', endDate: null, occupiedDays: 184, share: 600, provisions: 650, balance: -50, regularization: { id: 'r1', balance: -50, outdated: false, currentBalance: -50 } }),
         ], owners: [
           { userId: 'u1', name: 'Thomas Admin', share: 1, startDate: null, endDate: '2025-06-30T00:00:00.000Z', amount: 481 },
           { userId: 'u2', name: 'Claire Copro', share: 1, startDate: '2025-07-01T00:00:00.000Z', endDate: null, amount: 584 },

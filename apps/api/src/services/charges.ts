@@ -51,6 +51,20 @@ async function compute(lease: LeaseForDocuments, year: number) {
   }
 }
 
+type StoredRegularization = { occupiedDays: number; totalReal: number; totalCharged: number; balance: number }
+
+/**
+ * Régularisation périmée : le recalcul ne donne plus les montants enregistrés (charge ajoutée, modifiée ou supprimée
+ * après coup, provisions ou dates du bail changées). Renvoie le solde recalculé, ou null si le bail ne couvre plus l'année.
+ */
+async function staleness(lease: LeaseForDocuments, reg: StoredRegularization & { year: number }) {
+  let r: Awaited<ReturnType<typeof compute>>
+  try { r = await compute(lease, reg.year) } catch { return { outdated: true, currentBalance: null } }
+  const differs = (a: number, b: number) => Math.abs(a - b) >= 0.005
+  const outdated = r.occupiedDays !== reg.occupiedDays || differs(r.totalReal, reg.totalReal) || differs(r.totalCharged, reg.totalCharged)
+  return { outdated, currentBalance: r.balance }
+}
+
 export const chargesService = {
   list: (userId: string, filter: { year?: number; propertyId?: string }) => chargesRepository.findMany(userId, filter),
 
@@ -87,7 +101,8 @@ export const chargesService = {
         tenants.push({
           leaseId: id, tenantName: `${lease.tenant.firstName} ${lease.tenant.lastName}`, startDate: lease.startDate, endDate: lease.endDate,
           occupiedDays: r.occupiedDays, share: r.totalReal, provisions: r.totalCharged, balance: r.balance,
-          missingMonths: r.missingMonths, regularization: existing ? { id: existing.id, balance: existing.balance } : null,
+          missingMonths: r.missingMonths,
+          regularization: existing ? { id: existing.id, balance: existing.balance, ...(await staleness(lease, existing)) } : null,
         })
       }
       const totals = new Map<string, number>()
@@ -102,6 +117,25 @@ export const chargesService = {
       const vacancy = round2(total - tenants.reduce((s, t) => s + t.share, 0))
       return { propertyId: p.id, propertyName: p.name, total, tenants, vacancy, owners }
     }))
+  },
+
+  /** Régularisations enregistrées sur les biens de l'utilisateur qui ne correspondent plus au calcul (alerte). */
+  async outdatedRegularizations(userId: string) {
+    const regs = await prisma.chargeRegularization.findMany({
+      where: { lease: { property: { ownerships: { some: { userId } } } } }, orderBy: [{ year: 'desc' }, { createdAt: 'asc' }],
+    })
+    const rows = []
+    for (const reg of regs) {
+      const lease = await leaseOrThrow(reg.leaseId, userId)
+      const s = await staleness(lease, reg)
+      if (!s.outdated) continue
+      rows.push({
+        id: reg.id, leaseId: reg.leaseId, year: reg.year, createdAt: reg.createdAt,
+        tenantName: `${lease.tenant.firstName} ${lease.tenant.lastName}`, propertyName: lease.property.name,
+        balance: reg.balance, currentBalance: s.currentBalance,
+      })
+    }
+    return rows
   },
 
   async update(id: string, userId: string, data: Partial<Omit<ChargeInput, 'propertyId'>>) {
@@ -123,7 +157,11 @@ export const regularizationsService = {
 
   async preview(leaseId: string, userId: string, year: number) {
     const lease = await leaseOrThrow(leaseId, userId)
-    return { ...(await compute(lease, year)), existing: await regularizationsRepository.find(leaseId, year) }
+    const r = await compute(lease, year)
+    const existing = await regularizationsRepository.find(leaseId, year)
+    const outdated = !!existing && (existing.occupiedDays !== r.occupiedDays
+      || Math.abs(existing.totalReal - r.totalReal) >= 0.005 || Math.abs(existing.totalCharged - r.totalCharged) >= 0.005)
+    return { ...r, existing, outdated }
   },
 
   async create(leaseId: string, userId: string, year: number) {

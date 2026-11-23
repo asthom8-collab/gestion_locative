@@ -66,6 +66,17 @@ describe('coversMonth (même règle que la génération des échéances côté A
   it('bail inactif sans date de fin', () => expect(coversMonth(l('2025-01-01T00:00:00.000Z', null, false), nov)).toBe(false))
 })
 
+describe('alerte de régularisation à refaire', () => {
+  it('signale chaque régularisation périmée avec l’ancien et le nouveau solde', () => {
+    const [a] = buildAlerts([], [], new Date(2026, 10, 21), { year: 2026, month: 11 }, [
+      { id: 'g1', leaseId: 'l1', year: 2025, createdAt: '2026-02-01T00:00:00.000Z', tenantName: 'Jean Dupont', propertyName: 'Studio', balance: 100, currentBalance: 130 },
+    ])
+    expect(a.title).toBe('Régularisation 2025 à refaire — Studio')
+    expect(a.body).toMatch(/Jean Dupont.*solde enregistré 100,00\s€, recalculé 130,00\s€/)
+    expect(a.action).toEqual({ label: 'Voir le bail', to: '/leases/l1' })
+  })
+})
+
 describe('alerte de révision du loyer', () => {
   const now = new Date(2026, 10, 21) // 21 novembre 2026, anniversaire le 1er janvier
   const cur = { year: 2026, month: 11 }

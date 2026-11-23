@@ -79,7 +79,8 @@ middlewares/   validate, errorHandler (AppError → JSON { error }, zod → 400 
 | `PUT /api/properties/:id/owners` | Copropriétaires du bien et quotes-parts, datées (`startDate`, `endDate` facultatives) |
 | `GET /api/irl`, `PUT /api/irl {quarter, year, value}` | Indices IRL (communs à tous les comptes) ; PUT crée ou corrige |
 | `GET /api/charges?year&propertyId`, `POST /api/charges`, `PATCH/DELETE /api/charges/:id` | Charges récupérables réelles d'un bien pour une année ou un trimestre (`quarter` 1 à 4, null = année) |
-| `GET /api/charges/allocation?year` | Répartition des charges de l'année par bien : entre locataires (`tenants` : part réelle au prorata des jours occupés dans la période de chaque charge, provisions, solde, régularisation faite), part de vacance (`vacancy`, reste aux propriétaires), et entre propriétaires successifs (`owners`, quotes-parts datées) |
+| `GET /api/charges/allocation?year` | Répartition des charges de l'année par bien : entre locataires (`tenants` : part réelle au prorata des jours occupés dans la période de chaque charge, provisions, solde, régularisation faite), part de vacance (`vacancy`, reste aux propriétaires), et entre propriétaires successifs (`owners`, quotes-parts datées) ; `regularization.outdated` et `currentBalance` si la régularisation enregistrée est périmée |
+| `GET /api/charges/outdated-regularizations` | Régularisations enregistrées qui ne correspondent plus au recalcul (alerte du tableau de bord) : solde enregistré et recalculé |
 | `GET /api/notifications`, `POST /api/notifications/:id/read`, `POST …/read-all` | Notifications de l'utilisateur (50 dernières), lecture |
 | `GET /api/notifications/upcoming` | Prochains rappels de l'utilisateur : par bail actif, anniversaire, date d'envoi (`remindOn` = anniversaire − délai), état (`planned`, `sent`, `past`, `not_owner`) |
 | `POST /api/notifications/check` | Lance tout de suite la recherche des rappels (tous les baux, idempotent) ; renvoie `{ created, upcoming }` |
@@ -87,7 +88,7 @@ middlewares/   validate, errorHandler (AppError → JSON { error }, zod → 400 
 | `GET /api/leases/:id/revisions`, `GET …/revisions/preview[?date]` | Historique des révisions ; proposition (date, indices, loyer maximum, ce qui manque) |
 | `POST /api/leases/:id/revisions {effectiveDate, newRent?}`, `DELETE …/revisions/:rid` | Applique une révision ; annule la dernière |
 | `GET /api/leases/:id/revisions/:rid/letter[?download]` | Avis de révision PDF (généré à la volée) |
-| `GET /api/leases/:id/regularizations`, `GET …/regularizations/preview?year` | Régularisations enregistrées ; calcul pour une année |
+| `GET /api/leases/:id/regularizations`, `GET …/regularizations/preview?year` | Régularisations enregistrées ; calcul pour une année (`outdated` : l'enregistrée ne correspond plus au calcul) |
 | `POST /api/leases/:id/regularizations {year}`, `DELETE …/regularizations/:rid` | Enregistre (une par an) ou supprime une régularisation |
 | `GET /api/leases/:id/regularizations/:rid/statement[?download]` | Décompte de régularisation PDF (généré à la volée) |
 
@@ -354,6 +355,9 @@ Il faudra une migration au moment de faire l'écran concerné :
   dans la période de la charge (trimestre ou année) / jours de la période (la vacance reste au bailleur) ; moins les provisions des échéances générées de l'année (les mois
   sans échéance sont signalés) ; solde > 0 à réclamer, < 0 à rembourser. Une régularisation par bail et par année ; on
   la supprime pour la refaire. Provision mensuelle suggérée = charges de l'année / 12.
+  Une régularisation est **périmée** quand le recalcul ne redonne pas ses jours d'occupation, sa part réelle ou ses
+  provisions (charge ajoutée, modifiée ou supprimée après coup, échéance ou bail modifiés) : alerte sur le tableau de
+  bord, badge sur la page Charges, bandeau avec « Mettre à jour » (suppression puis nouvel enregistrement) dans le bail.
 - **Courriers PDF** (avis de révision, décompte) : générés à la volée, non stockés, avec les bailleurs et leurs
   signatures comme la quittance (`services/landlords.ts`, `lib/pdfCommon.ts`).
 - **Quotes-parts datées** (`lib/ownership.ts`) : un propriétaire possède le bien de `startDate` à `endDate` incluses
@@ -401,19 +405,20 @@ src/components/icons.tsx   point d'entrée unique des icônes lucide-react
 | Route | Écran |
 |---|---|
 | `/` | Tableau de bord : indicateurs, alertes, suivi mensuel des loyers |
-| `/properties` | Biens : type, régime fiscal, propriétaires, historique des locataires avec périodes de vacance |
+| `/properties` | Biens : type, régime fiscal, propriétaires (lien vers `/owners`), historique des locataires avec périodes de vacance |
+| `/owners?property` | Propriétaires : par bien, quotes-parts et dates de détention (statut actuel, ancien, à venir), modification (`components/OwnersModal`) ; comptes des copropriétaires (administrateur) |
 | `/tenants` | Locataires : onglets « En cours » / « Anciens et sans bail », historique des baux |
 | `/leases` | Locations (baux) : liste, création |
 | `/leases/:id` | Fiche du bail : conditions, modification, résiliation, échéances et quittances du bail |
 | `/rents?year&month` | Loyers : génération, encaissements, quittances |
 | `/charges?year` | Charges récupérables par bien, par année ou par trimestre, répartition entre propriétaires successifs, liens vers la régularisation de chaque bail |
 | `/notifications` | Notifications (rappels de révision), avec le bloc « Prochains rappels » et le bouton « Vérifier maintenant » ; cloche avec le nombre de non lues dans la barre latérale et l'en-tête mobile |
-| `/settings` | Paramètres : identité et adresse, signature, mot de passe, notifications (délai, e-mail, ntfy, SMS Free Mobile, essai), indices IRL, comptes (administrateur) |
+| `/settings` | Paramètres : identité et adresse, signature, mot de passe, notifications (délai, e-mail, ntfy, SMS Free Mobile, essai), indices IRL |
 
 **Connexion** : `components/auth/AuthGate` n'affiche l'application qu'à un utilisateur connecté ; sinon l'écran de
 connexion, ou le changement obligatoire du mot de passe provisoire. Une 401 pendant l'utilisation (session expirée)
 recharge le profil et ramène à la connexion. La déconnexion vide le cache des données. Les copropriétaires d'un bien se
-gèrent depuis sa carte (`components/OwnersModal`).
+gèrent dans la page Propriétaires (`pages/Owners`, fenêtre `components/OwnersModal`).
 
 Toutes les erreurs de l'API (400, 404, 409) s'affichent à l'écran (`ErrorAlert`) : en haut de la page pour une
 action de liste, dans la fenêtre pour un formulaire (qui reste alors ouvert).
