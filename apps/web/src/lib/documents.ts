@@ -1,5 +1,5 @@
 import type { DocumentCategory, DocumentItem } from '../types'
-import { fmtDate, fullName } from './format'
+import { fullName } from './format'
 
 export const DOCUMENT_CATEGORIES: Record<DocumentCategory, string> = {
   LEASE_CONTRACT: 'Contrat de bail',
@@ -31,5 +31,3 @@ export function attachmentLabel(d: DocumentItem) {
   return `Bien : ${d.property?.name ?? '—'}`
 }
 
-export const leaseOptionLabel = (l: { tenant?: { firstName: string; lastName: string }; property?: { name: string }; endDate?: string | null; active: boolean }) =>
-  `${fullName(l.tenant)} · ${l.property?.name ?? ''} (${l.active ? 'en cours' : `terminé le ${fmtDate(l.endDate)}`})`

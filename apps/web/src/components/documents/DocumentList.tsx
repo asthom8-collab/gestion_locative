@@ -4,6 +4,7 @@ import { useDeleteDocument, useUpdateDocument } from '../../hooks/useDocuments'
 import { useActionError } from '../../hooks/useActionError'
 import { DOCUMENT_CATEGORIES, attachmentLabel, fmtSize } from '../../lib/documents'
 import { fmtDate } from '../../lib/format'
+import { CategoryPicker } from './CategoryPicker'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
 import { ErrorAlert } from '../ui/ErrorAlert'
@@ -14,7 +15,7 @@ import type { DocumentCategory, DocumentItem } from '../../types'
 const iconBtn = 'p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700'
 
 /** Liste de documents : ouvrir, télécharger, renommer / changer le type, supprimer. */
-export function DocumentList({ docs, showAttachment = true }: { docs: DocumentItem[]; showAttachment?: boolean }) {
+export function DocumentList({ docs, showAttachment = true, showCategory = true }: { docs: DocumentItem[]; showAttachment?: boolean; showCategory?: boolean }) {
   const [editing, setEditing] = useState<DocumentItem | null>(null)
   const [form, setForm] = useState<{ label: string; category: DocumentCategory }>({ label: '', category: 'OTHER' })
   const updateM = useUpdateDocument()
@@ -47,7 +48,7 @@ export function DocumentList({ docs, showAttachment = true }: { docs: DocumentIt
               <span className="min-w-0">
                 <span className="block text-sm font-medium text-slate-800 truncate group-hover:text-indigo-600">{d.label}</span>
                 <span className="block text-xs text-slate-500 truncate">
-                  {DOCUMENT_CATEGORIES[d.category]}{showAttachment && ` · ${attachmentLabel(d)}`} · {fmtDate(d.createdAt)} · {fmtSize(d.size)}
+                  {[showCategory && DOCUMENT_CATEGORIES[d.category], showAttachment && attachmentLabel(d), fmtDate(d.createdAt), fmtSize(d.size)].filter(Boolean).join(' · ')}
                 </span>
               </span>
             </a>
@@ -67,11 +68,7 @@ export function DocumentList({ docs, showAttachment = true }: { docs: DocumentIt
           <Field label="Nom affiché">
             <input className={inputCls} value={form.label} maxLength={200} onChange={e => setForm({ ...form, label: e.target.value })} />
           </Field>
-          <Field label="Type de document">
-            <select className={inputCls} value={form.category} onChange={e => setForm({ ...form, category: e.target.value as DocumentCategory })}>
-              {(Object.keys(DOCUMENT_CATEGORIES) as DocumentCategory[]).map(c => <option key={c} value={c}>{DOCUMENT_CATEGORIES[c]}</option>)}
-            </select>
-          </Field>
+          <CategoryPicker value={form.category} onChange={category => setForm({ ...form, category })} />
           <p className="text-xs text-slate-500 -mt-1 mb-3">Fichier d'origine : {editing.fileName}</p>
           <div className="flex justify-end">
             <Button onClick={save} disabled={!form.label.trim() || updateM.isPending}><Check size={16} />Enregistrer</Button>

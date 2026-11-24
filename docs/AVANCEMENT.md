@@ -16,13 +16,12 @@
 Exemple en base : bien **« Démo paiements »** (Léa Exemple : 12 échéances payées, 1 partielle, 2 en retard ; 10 documents
 fictifs, dont 2 sur « Démo régularisation »). `npm run demo` (apps/api) recrée les exemples manquants ;
 `npm run demo:paiements-documents -- --supprimer` retire celui-ci.
-- [ ] **Paiements** (menu Finances) : année ‹ › et filtre par bien, totaux (encaissé, attendu à ce jour, reste dû),
-  encadré orange « À relancer » (retards et partiels, lien vers le mois dans Loyers), journal des encaissements
-  (lien vers le bail, quittance), export CSV.
-- [ ] **Documents** (menu Gestion) : envoi d'un fichier (PDF, image, Word, Excel ; 15 Mo) rattaché à un **bien**
-  (diagnostics, titre de propriété, taxe foncière, factures) ou à un **bail** (contrat, états des lieux, assurance,
-  photos) ; filtres par bien et par type, ouverture, téléchargement, renommage, suppression. Lien « Documents » sur
-  chaque bien (page Biens), bloc « Documents du bail » sur la fiche du bail. Migration `documents` (table vide jusqu'ici).
+- [x] **Paiements** (menu Finances) validé par Thomas le 2026-11-24 : année et filtre par bien, totaux, « À relancer »,
+  journal des encaissements, export CSV.
+- [ ] **Documents** (menu Gestion), refait le 2026-11-24 à la demande de Thomas (pas de listes déroulantes, téléphone) :
+  tuiles des **biens** et des **baux** (en cours, terminés) avec le nombre de documents ; une tuile ouvre le dossier,
+  documents rangés par type, filtre par boutons, « Ajouter » rattaché au dossier, type choisi par boutons. Dans un
+  bien, tuiles de ses baux. Fichiers : PDF, image, Word, Excel ; 15 Mo. Migration `documents`.
 
 ### Phase 4 bis : validée par Thomas (2026-11-23 et 24)
 Indices IRL, comptes et rôles, régularisation à refaire, badges, ntfy, e-mail, onglet Propriétaires, trimestres et
