@@ -13,6 +13,9 @@
   `npm run verify` : 119 tests API, 81 tests front (branche `paiements-documents`). Détail : HISTORIQUE.md.
 
 ### À tester par Thomas (branche locale `paiements-documents`, 2026-11-24)
+Exemple en base : bien **« Démo paiements »** (Léa Exemple : 12 échéances payées, 1 partielle, 2 en retard ; 10 documents
+fictifs, dont 2 sur « Démo régularisation »). `npm run demo` (apps/api) recrée les exemples manquants ;
+`npm run demo:paiements-documents -- --supprimer` retire celui-ci.
 - [ ] **Paiements** (menu Finances) : année ‹ › et filtre par bien, totaux (encaissé, attendu à ce jour, reste dû),
   encadré orange « À relancer » (retards et partiels, lien vers le mois dans Loyers), journal des encaissements
   (lien vers le bail, quittance), export CSV.

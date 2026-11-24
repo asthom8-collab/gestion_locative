@@ -402,6 +402,8 @@ Il faudra une migration au moment de faire l'écran concerné :
   propriété, taxe foncière, factures). Le type annoncé doit être dans la liste et correspondre à la signature du
   fichier ; le fichier est rangé sous un nom aléatoire (`documents/<uuid>.<ext>`), le nom d'origine sert au
   téléchargement. La suppression d'un bien (sans bail) supprime ses documents ; un bail ne se supprime pas.
+  Exemple en base : `npm run demo:paiements-documents` (bien « Démo paiements » : échéances payées, partielle, en
+  retard, et documents fictifs ; `-- --supprimer` pour le retirer). `npm run demo` lance tous les exemples.
 - **Dates** : stockées en UTC à minuit. Les calculs de période se font en UTC des deux côtés.
 
 ### 5.1 Conséquences prévues de la copropriété (phases suivantes)

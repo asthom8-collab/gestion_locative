@@ -33,6 +33,7 @@ docker compose up -d db
 npm run dev                 # ts-node-dev, port 3001
 npm run prisma:migrate      # nouvelle migration (dev)
 npm run prisma:seed         # données de test (admin@local.dev / changeme)
+npm run demo                # données de démonstration (biens « Démo … ») pour tester les écrans à la main
 npm run reset-password -- <email>   # mot de passe provisoire pour un compte bloqué (sans e-mail : liste des comptes)
 npm run build               # tsc, vérification avant push
 
@@ -53,6 +54,9 @@ npm run verify
   La base de test est `<base de DATABASE_URL>_test` (créée et migrée automatiquement, **vidée à chaque test**) ;
   `TEST_DATABASE_URL` permet de la forcer (CI). Le nom doit finir par `_test`. Il faut `docker compose up -d db`.
 - `apps/web` : Vitest + Testing Library (jsdom), tests `*.test.tsx` à côté du code ; `fetch` est simulé via `src/test/utils.tsx`.
+- **Données de démonstration** (base de dev, à la main) : chaque fonctionnalité livrée vient avec un exemple en base,
+  sur des biens « Démo … » à part (`prisma/demo-*.ts`, regroupés dans `npm run demo`, idempotents, sans toucher aux
+  autres données). Les tests automatiques, eux, partent d'une base vide et créent leurs propres données.
 - `npm test` dans chaque app, `npm run test:watch` en développement.
 - Le serveur Express est défini dans `src/app.ts` (importé par les tests), `src/index.ts` ne fait que l'écoute.
 
