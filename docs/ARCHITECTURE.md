@@ -86,6 +86,10 @@ middlewares/   validate, errorHandler (AppError → JSON { error }, zod → 400 
 | `GET /api/notifications/upcoming` | Prochains rappels de l'utilisateur : par bail actif, anniversaire, date d'envoi (`remindOn` = anniversaire − délai), état (`planned`, `sent`, `past`, `not_owner`) |
 | `POST /api/notifications/check` | Lance tout de suite la recherche des rappels (tous les baux, idempotent) ; renvoie `{ created, upcoming }` |
 | `POST /api/notifications/test` | Message d'essai sur tous les canaux ; résultat par canal (`sent`, `disabled`, `not_configured`, `{error}`) |
+| `GET /api/documents?leaseId&propertyId&category` | Documents visibles (bail ou bien de l'utilisateur), du plus récent au plus ancien ; avec `propertyId`, ceux du bien **et** de ses baux. Avec `property` et `lease` (bien, locataire), sans le chemin sur le disque |
+| `POST /api/documents?leaseId\|propertyId&category&fileName[&label]` | Envoi d'un fichier **brut** dans le corps (`Content-Type` = son type), 15 Mo au plus (413). Exactement un rattachement (400). Types acceptés : PDF, JPEG, PNG, WebP, HEIC, Word, Excel, OpenDocument (415 sinon) ; signature binaire vérifiée (400 si le contenu ne correspond pas) |
+| `PATCH /api/documents/:id {label?, category?}`, `DELETE /api/documents/:id` | Renomme ou change le type ; supprime la ligne et le fichier |
+| `GET /api/documents/:id/file[?download]` | Le fichier : affiché (PDF, images courantes) ou téléchargé (autres types, ou `?download`), nom accentué (RFC 6266), `nosniff`, `no-store` |
 | `GET /api/leases/:id/revisions`, `GET …/revisions/preview[?date]` | Historique des révisions ; proposition (date, indices, loyer maximum, ce qui manque) |
 | `POST /api/leases/:id/revisions {effectiveDate, newRent?}`, `DELETE …/revisions/:rid` | Applique une révision ; annule la dernière |
 | `GET /api/leases/:id/revisions/:rid/letter[?download]` | Avis de révision PDF (généré à la volée) |
@@ -137,6 +141,7 @@ erDiagram
   Lease ||--o{ RentRevision : ""
   Property ||--o{ LmnpEntry : ""
   Lease ||--o{ Document : ""
+  Property ||--o{ Document : ""
   Tenant ||--o{ Document : ""
   Lease ||--o{ Inventory : "états des lieux"
   Inventory ||--o{ InventoryRoom : ""
@@ -272,10 +277,13 @@ erDiagram
   }
   Document {
     string label
+    string fileName
     string filePath
+    string mimeType
+    int size
     DocumentCategory category
-    string leaseId FK
-    string tenantId FK
+    string leaseId FK "ou propertyId"
+    string propertyId FK
   }
   Inventory {
     string leaseId FK
@@ -316,7 +324,7 @@ erDiagram
 | IrlIndex | Indices IRL de l'INSEE, importés chaque jour (ou saisis à la main) | 4, 4 bis | oui |
 | Notification | Notification d'un propriétaire (rappel de révision, régularisation à refaire, essai) ; unique par `(userId, kind, leaseId, dueDate)` | 4 bis | oui |
 | LmnpEntry | Écritures comptables LMNP | 5 | non |
-| Document | Pièces jointes (bail, locataire) | US-04 | non |
+| Document | Fichiers rattachés à un bail **ou** à un bien (contrainte `Document_owner_check`), dans `storage/documents/` ; `tenantId` prévu pour le dossier locataire, pas encore utilisé | US-04 | oui |
 | Inventory, InventoryRoom, InventoryElement, InventoryPhoto | États des lieux d'entrée et de sortie | US-22 à 25 | non |
 
 ### 4.3 Écarts connus avec la maquette du front
@@ -328,7 +336,7 @@ Il faudra une migration au moment de faire l'écran concerné :
 - **Types de bien** : Studio, Garage, Maison… et l'option « borne de recharge » d'un parking.
 - **Plusieurs locataires sur un bail** (colocation) : aujourd'hui `Lease.tenantId` est unique.
 - **Plusieurs bailleurs** : fait (copropriété avec quote-part, voir § 3.3 et § 5).
-- **Dossier locataire** (pièces obligatoires) : à rapprocher de `Document`.
+- **Dossier locataire** (pièces obligatoires) : à rapprocher de `Document` (`tenantId`, catégories à ajouter).
 
 ## 5. Règles métier implémentées
 
@@ -389,6 +397,11 @@ Il faudra une migration au moment de faire l'écran concerné :
   trimestres manquants et remplace une valeur saisie à la main par la valeur officielle ; un échec est rendu, pas levé.
 - **Rôles** : `ADMIN` (voit et gère tous les comptes, dans Paramètres) et `USER` = propriétaire (ne voit que ses biens
   et ses copropriétaires). Les droits sur un bien sont les mêmes pour tous ses propriétaires, quel que soit le rôle.
+- **Documents** (`services/documents.ts`) : rattachés à un bail ou à un bien, visibles par tous les propriétaires du
+  bien. Catégories de la maquette (contrat, états des lieux, assurance, photos) et d'un bien (diagnostics, titre de
+  propriété, taxe foncière, factures). Le type annoncé doit être dans la liste et correspondre à la signature du
+  fichier ; le fichier est rangé sous un nom aléatoire (`documents/<uuid>.<ext>`), le nom d'origine sert au
+  téléchargement. La suppression d'un bien (sans bail) supprime ses documents ; un bail ne se supprime pas.
 - **Dates** : stockées en UTC à minuit. Les calculs de période se font en UTC des deux côtés.
 
 ### 5.1 Conséquences prévues de la copropriété (phases suivantes)
@@ -428,6 +441,7 @@ src/components/icons.tsx   point d'entrée unique des icônes lucide-react
 | `/leases/:id` | Fiche du bail : conditions, modification, résiliation, échéances et quittances du bail |
 | `/rents?year&month` | Loyers : génération, encaissements, quittances |
 | `/payments` | Paiements : encaissements de l'année (filtre par bien, export CSV), loyers à relancer (retards et partiels) ; lit `GET /api/rent-payments?year` |
+| `/documents?property` | Documents : filtres par bien (lien « Documents » sur chaque bien) et par type, envoi (rattachement à un bien ou à un bail), ouverture, téléchargement, renommage, suppression ; bloc « Documents du bail » sur la fiche du bail |
 | `/charges?year` | Charges récupérables par bien, par année ou par trimestre, répartition entre propriétaires successifs, liens vers la régularisation de chaque bail |
 | `/notifications` | Notifications (rappels de révision), avec le bloc « Prochains rappels » et le bouton « Vérifier maintenant » ; cloche avec le nombre de non lues dans la barre latérale et l'en-tête mobile |
 | `/settings` | Paramètres : identité et adresse, signature, mot de passe, notifications (délai, e-mail, ntfy, SMS Free Mobile, essai), comptes et rôles (administrateur) |
@@ -472,7 +486,8 @@ du front.
 - **Secrets** : `.env` à la racine (ignoré par git), modèles dans `apps/*/.env.example`. `SESSION_SECRET` y est
   obligatoire pour le conteneur `api` (`openssl rand -hex 32`). Notifications : `APP_URL` (liens absolus dans les
   e-mails et sur le téléphone) et `SMTP_HOST/PORT/USER/PASS/FROM` (sans `SMTP_HOST`, pas d'e-mail ; `SMTP_PORT` vide : 465), facultatives, passées au conteneur `api` par `docker-compose.yml`.
-- **Fichiers** : `storage/` (PDF, futurs documents des locataires) n'est jamais commité.
+- **Fichiers** : `storage/` (quittances, signatures, documents) n'est jamais commité ; dans les conteneurs, volume
+  `app_storage`. nginx accepte des corps jusqu'à 16 Mo sur `/api` (envoi de documents).
 
 ## 9. Sécurité et points ouverts
 

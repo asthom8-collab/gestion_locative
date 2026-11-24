@@ -15,6 +15,7 @@ import { PaymentStatusBadge } from '../components/ui/PaymentStatusBadge'
 import { PropTypeIcon } from '../components/ui/PropTypeIcon'
 import { RevisionCard } from '../components/lease/RevisionCard'
 import { RegularizationCard } from '../components/lease/RegularizationCard'
+import { LeaseDocumentsCard } from '../components/documents/LeaseDocumentsCard'
 import { ArrowLeft, Mail, Phone, Pencil, Receipt, Download, Check, Ban, ChevronRight, AlertCircle } from '../components/icons'
 import { eur, fmtDate, fullName, durationLabel } from '../lib/format'
 import type { LeaseDetail as LeaseDetailT, LeaseType, RentPayment, UpdateLeaseInput } from '../types'
@@ -193,6 +194,7 @@ export function LeaseDetail() {
       <PaymentsCard leaseId={lease.id} />
       <RevisionCard lease={lease} onEditLease={() => openEdit(lease)} />
       <div id="regularisation" className="scroll-mt-4"><RegularizationCard key={regYear} lease={lease} initialYear={regYear} /></div>
+      <LeaseDocumentsCard leaseId={lease.id} />
 
       {editing && (
         <Modal title="Modifier le bail" onClose={() => setEditing(null)}>

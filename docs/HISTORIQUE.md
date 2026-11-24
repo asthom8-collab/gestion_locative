@@ -169,6 +169,9 @@ colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locata
 - Branche `phase4b-notifications` fusionnée dans `main` et poussée.
 - Conteneurs remplacés après `sudo snap restart docker` (blocage AppArmor levé) : variables `SMTP_*` et `APP_URL`
   passées à l'API dans `docker-compose.yml` ; `SMTP_PORT` vide → 465 par défaut.
+- Branche `paiements-documents` : page **Paiements** (encaissements de l'année, loyers à relancer, export CSV) et
+  page **Documents** (fichiers rattachés à un bien ou à un bail, migration `20261124210000_documents`, envoi brut
+  dans le corps, signature binaire vérifiée, 15 Mo). Choix de Thomas : rattachement au bail **et** au bien.
 
 ### 2026-11-23
 - Second test de Thomas : e-mail du compte rendu modifiable, accès aux dates de détention. Le prorata des charges par trimestre « a l'air de bien fonctionner ».

@@ -26,7 +26,26 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json()
 }
 
+const query = (params: Record<string, string | undefined>) => {
+  const q = new URLSearchParams(Object.entries(params).filter((e): e is [string, string] => !!e[1])).toString()
+  return q ? `?${q}` : ''
+}
+
 export const api = {
+  documents: {
+    list: (filter: T.DocumentFilter = {}) => request<T.DocumentItem[]>(`/documents${query({ ...filter })}`),
+    /** Le fichier part brut dans le corps, avec son type ; rattachement, type et nom dans l'URL */
+    upload: (target: T.DocumentTarget, category: T.DocumentCategory, file: File, label?: string) =>
+      request<T.DocumentItem>(`/documents${query({ ...target, category, fileName: file.name, label })}`, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+        body: file,
+      }),
+    update: (id: string, data: { label?: string; category?: T.DocumentCategory }) =>
+      request<T.DocumentItem>(`/documents/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: string) => request<void>(`/documents/${id}`, { method: 'DELETE' }),
+    fileUrl: (id: string, download = false) => `${BASE}/documents/${id}/file${download ? '?download' : ''}`,
+  },
   irl: {
     list: () => request<T.IrlIndex[]>('/irl'),
     save: (data: { quarter: number; year: number; value: number }) =>

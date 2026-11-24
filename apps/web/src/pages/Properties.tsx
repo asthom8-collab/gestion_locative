@@ -11,7 +11,7 @@ import { Field, inputCls } from '../components/ui/Field'
 import { Empty } from '../components/ui/Empty'
 import { ErrorAlert } from '../components/ui/ErrorAlert'
 import { PropTypeIcon } from '../components/ui/PropTypeIcon'
-import { Building2, Plus, Pencil, Trash2, MapPin, Check, ChevronRight, ClipboardList, UserCircle2 } from '../components/icons'
+import { Building2, Plus, Pencil, Trash2, MapPin, Check, ChevronRight, ClipboardList, UserCircle2, Paperclip } from '../components/icons'
 import { eur, fmtMonth, fullName, PROPERTY_TYPE_LABELS, FISCAL_REGIMES } from '../lib/format'
 import type { CreatePropertyInput, Lease, Property, PropertyType, FiscalRegime } from '../types'
 
@@ -97,7 +97,7 @@ export function Properties() {
   }
 
   const remove = (p: Property) => {
-    if (!confirm(`Supprimer « ${p.name} » ?`)) return
+    if (!confirm(`Supprimer « ${p.name} » ? Ses documents (diagnostics, factures…) seront aussi supprimés.`)) return
     page.run(() => deleteM.mutateAsync(p.id))
   }
 
@@ -137,6 +137,9 @@ export function Properties() {
                         <span className="truncate">{owners.map(o => `${fullName(o.user)}${owners.length > 1 ? ` (${Math.round(o.share * 100)} %)` : ''}`).join(' · ')}</span>
                       </Link>
                     )}
+                    <Link to={`/documents?property=${p.id}`} className="text-xs text-slate-400 hover:text-indigo-600 mt-0.5 flex items-center gap-1 w-fit">
+                      <Paperclip size={11} className="shrink-0" />Documents
+                    </Link>
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <button onClick={() => openEdit(p)} aria-label={`Modifier ${p.name}`} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400"><Pencil size={15} /></button>

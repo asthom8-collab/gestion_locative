@@ -1,3 +1,4 @@
+import { documentsService } from './documents'
 import { checkTimeline } from '../lib/ownership'
 import { propertiesRepository, CreatePropertyInput, UpdatePropertyInput } from '../repositories/properties'
 import { AppError } from '../middlewares/errorHandler'
@@ -48,6 +49,8 @@ export const propertiesService = {
       throw new AppError(409, 'Impossible de supprimer un bien avec un bail actif')
     if (property.leases.length > 0)
       throw new AppError(409, 'Impossible de supprimer un bien qui a un historique de baux')
+    // Les documents du bien (diagnostics, factures…) partent avec lui
+    await documentsService.removeForProperty(id)
     await propertiesRepository.delete(id)
   },
 }

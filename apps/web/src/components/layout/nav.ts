@@ -1,10 +1,10 @@
 import type { LucideIcon } from 'lucide-react'
-import { LayoutDashboard, Building2, Users, FileSignature, Receipt, UserCircle2, Wallet, KeyRound, TrendingUp, CreditCard } from '../icons'
+import { LayoutDashboard, Building2, Users, FileSignature, Receipt, UserCircle2, Wallet, KeyRound, TrendingUp, CreditCard, Paperclip } from '../icons'
 
 export interface NavItem { to: string; label: string; short?: string; Icon: LucideIcon; end?: boolean }
 
 /** Menu de la barre latérale, groupé comme dans la maquette. Les écrans des phases suivantes
- *  (Synchro bancaire, Impôts, Interventions, Documents, États des lieux) y seront ajoutés au fil de l'eau. */
+ *  (Synchro bancaire, Impôts, Interventions, États des lieux) y seront ajoutés au fil de l'eau. */
 export const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
   { items: [{ to: '/', label: 'Tableau de bord', short: 'Accueil', Icon: LayoutDashboard, end: true }] },
   {
@@ -23,6 +23,10 @@ export const NAV_GROUPS: { label?: string; items: NavItem[] }[] = [
       { to: '/payments', label: 'Paiements', Icon: CreditCard },
       { to: '/charges', label: 'Charges', Icon: Wallet },
     ],
+  },
+  {
+    label: 'Gestion',
+    items: [{ to: '/documents', label: 'Documents', Icon: Paperclip }],
   },
   {
     label: 'Référentiels',

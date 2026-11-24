@@ -18,16 +18,16 @@ enum Role {
 }
 
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
-  passwordHash String
-  firstName    String
-  lastName     String
-  role         Role        @default(USER)
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  passwordHash       String
+  firstName          String
+  lastName           String
+  role               Role     @default(USER)
   // Adresse du bailleur, imprimée sur les quittances
-  address      String?
-  zipCode      String?
-  city         String?
+  address            String?
+  zipCode            String?
+  city               String?
   // Image de la signature (PNG ou JPEG), apposée sur les quittances ; chemin relatif à STORAGE_PATH
   signaturePath      String?
   // Compte créé par un administrateur avec un mot de passe provisoire
@@ -40,11 +40,11 @@ model User {
   ntfyTopic          String?
   freeMobileUser     String?
   freeMobileKey      String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   ownerships     Ownership[]
-  createdTenants Tenant[]   @relation("TenantCreatedBy")
+  createdTenants Tenant[]       @relation("TenantCreatedBy")
   notifications  Notification[]
 }
 
@@ -79,23 +79,24 @@ model Property {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  ownerships   Ownership[]
-  leases       Lease[]
-  charges      Charge[]
-  lmnpEntries  LmnpEntry[]
+  ownerships  Ownership[]
+  leases      Lease[]
+  charges     Charge[]
+  lmnpEntries LmnpEntry[]
+  documents   Document[]
 }
 
 model Ownership {
-  id         String   @id @default(cuid())
-  property   Property @relation(fields: [propertyId], references: [id])
+  id         String    @id @default(cuid())
+  property   Property  @relation(fields: [propertyId], references: [id])
   propertyId String
-  user       User     @relation(fields: [userId], references: [id])
+  user       User      @relation(fields: [userId], references: [id])
   userId     String
-  share      Float    @default(1.0)
+  share      Float     @default(1.0)
   // Période de détention (bornes incluses) ; null = depuis toujours / encore propriétaire
   startDate  DateTime?
   endDate    DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   @@unique([propertyId, userId])
 }
@@ -105,17 +106,17 @@ model Ownership {
 // ─────────────────────────────────────────
 
 model Tenant {
-  id        String     @id @default(cuid())
-  firstName String
-  lastName  String
-  email     String
-  phone     String?
-  iban      String?
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String
+  phone       String?
+  iban        String?
   // Propriétaire qui a saisi le locataire : il le voit même sans bail (sinon, visibilité par les baux)
   createdBy   User?    @relation("TenantCreatedBy", fields: [createdById], references: [id])
   createdById String?
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   leases    Lease[]
   documents Document[]
@@ -131,23 +132,23 @@ enum LeaseType {
 }
 
 model Lease {
-  id             String     @id @default(cuid())
-  property       Property   @relation(fields: [propertyId], references: [id])
+  id             String    @id @default(cuid())
+  property       Property  @relation(fields: [propertyId], references: [id])
   propertyId     String
-  tenant         Tenant     @relation(fields: [tenantId], references: [id])
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
   tenantId       String
   type           LeaseType
   startDate      DateTime
   endDate        DateTime?
   rentAmount     Float
   chargesAmount  Float
-  rentDayOfMonth Int        @default(1)
+  rentDayOfMonth Int       @default(1)
   irlReference   Float?
   irlQuarter     Int?
   irlYear        Int?
-  active         Boolean    @default(true)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   rentPayments          RentPayment[]
   chargeRegularizations ChargeRegularization[]
@@ -173,8 +174,8 @@ enum PaymentSource {
 }
 
 model RentPayment {
-  id                String        @id @default(cuid())
-  lease             Lease         @relation(fields: [leaseId], references: [id])
+  id                String           @id @default(cuid())
+  lease             Lease            @relation(fields: [leaseId], references: [id])
   leaseId           String
   periodMonth       Int
   periodYear        Int
@@ -187,14 +188,14 @@ model RentPayment {
   expectedAmount    Float
   receivedAmount    Float?
   paymentDate       DateTime?
-  status            PaymentStatus @default(PENDING)
-  source            PaymentSource @default(MANUAL)
+  status            PaymentStatus    @default(PENDING)
+  source            PaymentSource    @default(MANUAL)
   bankTransaction   BankTransaction? @relation(fields: [bankTransactionId], references: [id])
-  bankTransactionId String?       @unique
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  bankTransactionId String?          @unique
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
-  receipt           Receipt?
+  receipt Receipt?
 
   @@unique([leaseId, periodYear, periodMonth])
 }
@@ -219,13 +220,13 @@ enum TransactionStatus {
 }
 
 model BankTransaction {
-  id          String            @id @default(cuid())
-  externalId  String            @unique
-  amount      Float
-  label       String
-  date        DateTime
-  status      TransactionStatus @default(UNMATCHED)
-  createdAt   DateTime          @default(now())
+  id         String            @id @default(cuid())
+  externalId String            @unique
+  amount     Float
+  label      String
+  date       DateTime
+  status     TransactionStatus @default(UNMATCHED)
+  createdAt  DateTime          @default(now())
 
   rentPayment RentPayment?
 }
@@ -333,21 +334,39 @@ model LmnpEntry {
 // DOCUMENTS (US-04)
 // ─────────────────────────────────────────
 
+// Type de document (catégories de la maquette, plus celles d'un bien)
 enum DocumentCategory {
-  LEASE_DOCUMENT
-  TENANT_DOCUMENT
+  LEASE_CONTRACT // contrat de bail
+  INVENTORY_ENTRY // état des lieux d'entrée
+  INVENTORY_EXIT // état des lieux de sortie
+  INSURANCE // attestation d'assurance
+  PHOTO
+  DIAGNOSTIC // diagnostics (DPE, électricité, plomb…)
+  TITLE_DEED // titre de propriété
+  PROPERTY_TAX // taxe foncière
+  INVOICE // facture (travaux, entretien)
+  OTHER
 }
 
+// Fichier envoyé par un propriétaire, rattaché soit à un bail, soit à un bien (exactement l'un des deux)
 model Document {
-  id        String           @id @default(cuid())
-  label     String
-  filePath  String
-  category  DocumentCategory
-  leaseId   String?
-  lease     Lease?           @relation(fields: [leaseId], references: [id])
-  tenantId  String?
-  tenant    Tenant?          @relation(fields: [tenantId], references: [id])
-  createdAt DateTime         @default(now())
+  id         String           @id @default(cuid())
+  label      String // nom affiché (par défaut le nom du fichier)
+  fileName   String // nom du fichier d'origine, pour le téléchargement
+  filePath   String // chemin relatif à STORAGE_PATH
+  mimeType   String
+  size       Int
+  category   DocumentCategory
+  leaseId    String?
+  lease      Lease?           @relation(fields: [leaseId], references: [id])
+  propertyId String?
+  property   Property?        @relation(fields: [propertyId], references: [id])
+  tenantId   String?
+  tenant     Tenant?          @relation(fields: [tenantId], references: [id])
+  createdAt  DateTime         @default(now())
+
+  @@index([leaseId])
+  @@index([propertyId])
 }
 
 // ─────────────────────────────────────────
@@ -371,7 +390,7 @@ model Inventory {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  rooms               InventoryRoom[]
+  rooms InventoryRoom[]
 }
 
 model InventoryRoom {
@@ -384,8 +403,8 @@ model InventoryRoom {
 }
 
 model InventoryElement {
-  id        String          @id @default(cuid())
-  room      InventoryRoom   @relation(fields: [roomId], references: [id])
+  id        String           @id @default(cuid())
+  room      InventoryRoom    @relation(fields: [roomId], references: [id])
   roomId    String
   label     String
   condition String?

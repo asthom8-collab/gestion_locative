@@ -40,6 +40,12 @@ export function errorHandler(
     return
   }
 
+  // Corps refusé par express.json / express.raw (ex. document trop lourd)
+  if ((err as { type?: string })?.type === 'entity.too.large') {
+    res.status(413).json({ error: 'Fichier trop lourd' })
+    return
+  }
+
   logger.error('Erreur non gérée', { err })
   res.status(500).json({ error: 'Erreur interne du serveur' })
 }

@@ -298,3 +298,29 @@ export interface OutdatedRegularization {
   id: string; leaseId: string; year: number; createdAt: string; tenantName: string; propertyName: string
   balance: number; currentBalance: number | null
 }
+
+export type DocumentCategory =
+  | 'LEASE_CONTRACT' | 'INVENTORY_ENTRY' | 'INVENTORY_EXIT' | 'INSURANCE' | 'PHOTO'
+  | 'DIAGNOSTIC' | 'TITLE_DEED' | 'PROPERTY_TAX' | 'INVOICE' | 'OTHER'
+
+/** Document envoyé, rattaché à un bail (leaseId) ou à un bien (propertyId) */
+export interface DocumentItem {
+  id: string
+  label: string
+  fileName: string
+  mimeType: string
+  size: number
+  category: DocumentCategory
+  leaseId: string | null
+  propertyId: string | null
+  createdAt: string
+  property: { id: string; name: string } | null
+  lease: {
+    id: string; startDate: string; endDate: string | null; active: boolean
+    property: { id: string; name: string }
+    tenant: { id: string; firstName: string; lastName: string }
+  } | null
+}
+
+export interface DocumentFilter { leaseId?: string; propertyId?: string; category?: DocumentCategory }
+export type DocumentTarget = { leaseId: string } | { propertyId: string }
