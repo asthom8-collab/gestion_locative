@@ -107,6 +107,9 @@ export const api = {
   rentPayments: {
     list: (year: number, month: number) =>
       request<import('../types').RentPayment[]>(`/rent-payments?year=${year}&month=${month}`),
+    /** Toutes les échéances d'une année (page Paiements) */
+    listByYear: (year: number) =>
+      request<import('../types').RentPayment[]>(`/rent-payments?year=${year}`),
     /** Toutes les échéances d'un bail, de la plus récente à la plus ancienne */
     listByLease: (leaseId: string) =>
       request<import('../types').RentPayment[]>(`/rent-payments?leaseId=${encodeURIComponent(leaseId)}`),

@@ -12,22 +12,19 @@
   IRL de l'INSEE, rôles des comptes), refonte du front, multipropriétaires. Phase 4 bis validée par Thomas le 2026-11-24.
   `npm run verify` : 112 tests API, 74 tests front. Détail : HISTORIQUE.md.
 
-### Phase 4 bis : validée par Thomas (2026-11-24)
-- [x] **Indices IRL** (validé par Thomas le 2026-11-24) : menu Référentiels → Indices IRL (sortis des Paramètres, valeurs espacées, évolution sur un an,
-  source). Import **automatique** depuis l'INSEE chaque jour (40 trimestres déjà importés) + « Vérifier maintenant ».
-- [x] **Comptes** (validé par Thomas le 2026-11-24) : de retour dans Paramètres (administrateur), deux rôles : Administrateur / Propriétaire (un
-  propriétaire ne voit que lui-même et ses copropriétaires). Rôle au choix à la création, modifiable ensuite.
-- [x] **Régularisation à refaire** (validé par Thomas le 2026-11-23) : exemple en base, bien « Démo régularisation » (locataire Camille Exemple, eau
-  passée de 360 à 450 € après la régularisation 2025). À voir : tableau de bord, cloche, badge orange (Charges),
-  bandeau en haut de la fiche du bail → « Voir et mettre à jour » → « Mettre à jour la régularisation ».
-- [x] **Badges** de la page Charges plus visibles (« c'est super ») (Régulariser / Régularisée / Régularisation à refaire).
-- [x] ntfy : notifications reçues par Thomas (2026-11-24).
-- [x] E-mail : SMTP Gmail en place, notification reçue par Thomas (le second compte a une adresse fictive : échec normal).
-- [x] Onglet Propriétaires validé (« très bien, on part là-dessus »). Charges par trimestre et prorata validés.
+### À tester par Thomas (branche locale `paiements-documents`, 2026-11-24)
+- [ ] **Paiements** (menu Finances) : année ‹ › et filtre par bien, totaux (encaissé, attendu à ce jour, reste dû),
+  encadré orange « À relancer » (retards et partiels, lien vers le mois dans Loyers), journal des encaissements
+  (lien vers le bail, quittance), export CSV.
+
+### Phase 4 bis : validée par Thomas (2026-11-23 et 24)
+Indices IRL, comptes et rôles, régularisation à refaire, badges, ntfy, e-mail, onglet Propriétaires, trimestres et
+prorata. Détail : HISTORIQUE.md. Exemple en base : bien « Démo régularisation » (`npm run demo:regularisation`).
 
 ### Prochaines étapes, dans l'ordre
-1. Suite : phase 3 (rapprochement bancaire) ou écrans restants de la maquette (Paiements, Synchro bancaire, Impôts,
-   Interventions, Documents, États des lieux, dossier locataire), en gardant la répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1).
+1. Paiements (en test), puis **Documents** (envoi de fichiers rangés par bail, catégories de la maquette).
+2. Ensuite : phase 3 (rapprochement bancaire) ou écrans restants (Synchro bancaire, Impôts, Interventions,
+   États des lieux — gros morceau —, dossier locataire), en gardant la répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1).
 
 ### Compte bloqué
 `npm run reset-password -- <email>` dans `apps/api` : mot de passe provisoire (sans e-mail : liste des comptes).

@@ -84,6 +84,15 @@ describe('/api/rent-payments', () => {
     expect(res.body[0].lease.tenant.lastName).toBe('Dupont')
   })
 
+  it('liste toute une année sans mois (page Paiements)', async () => {
+    await setupLease()
+    await generate(2026, 3)
+    await generate(2026, 4)
+    const res = await api().get('/api/rent-payments?year=2026').expect(200)
+    expect(res.body.map((p: { periodMonth: number }) => p.periodMonth)).toEqual([4, 3])
+    expect((await api().get('/api/rent-payments?year=2025').expect(200)).body).toEqual([])
+  })
+
   it('refuse un filtre non numérique (400)', async () => {
     await api().get('/api/rent-payments?year=abc').expect(400)
   })

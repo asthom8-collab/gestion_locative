@@ -7,6 +7,11 @@ export function useRentPayments(year: number, month: number) {
   return useQuery({ queryKey: key(year, month), queryFn: () => api.rentPayments.list(year, month) })
 }
 
+/** Échéances d'une année, tous mois confondus (page Paiements). */
+export function useYearRentPayments(year: number) {
+  return useQuery({ queryKey: ['rent-payments', 'year', year], queryFn: () => api.rentPayments.listByYear(year) })
+}
+
 /** Échéances d'un bail. La clé commence par 'rent-payments' : les mutations ci-dessous la rafraîchissent aussi. */
 export function useLeaseRentPayments(leaseId: string) {
   return useQuery({ queryKey: ['rent-payments', 'lease', leaseId], queryFn: () => api.rentPayments.listByLease(leaseId) })
