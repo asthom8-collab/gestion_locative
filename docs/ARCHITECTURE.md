@@ -470,7 +470,7 @@ du front.
   Sur `main` ou un tag `v*`, publication sur GHCR : `ghcr.io/asthom8-collab/gestion-locative-{api,web}:{latest,sha-xxxxxxx,X.Y.Z}`.
 - **Secrets** : `.env` à la racine (ignoré par git), modèles dans `apps/*/.env.example`. `SESSION_SECRET` y est
   obligatoire pour le conteneur `api` (`openssl rand -hex 32`). Notifications : `APP_URL` (liens absolus dans les
-  e-mails et sur le téléphone) et `SMTP_HOST/PORT/USER/PASS/FROM` (sans `SMTP_HOST`, pas d'e-mail).
+  e-mails et sur le téléphone) et `SMTP_HOST/PORT/USER/PASS/FROM` (sans `SMTP_HOST`, pas d'e-mail ; `SMTP_PORT` vide : 465), facultatives, passées au conteneur `api` par `docker-compose.yml`.
 - **Fichiers** : `storage/` (PDF, futurs documents des locataires) n'est jamais commité.
 
 ## 9. Sécurité et points ouverts

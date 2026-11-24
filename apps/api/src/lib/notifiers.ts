@@ -11,7 +11,7 @@ export const smtpConfigured = () => !!process.env.SMTP_HOST
 let transport: nodemailer.Transporter | null = null
 function mailer() {
   if (!transport) {
-    const port = Number(process.env.SMTP_PORT ?? 465)
+    const port = Number(process.env.SMTP_PORT || 465)
     transport = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port,

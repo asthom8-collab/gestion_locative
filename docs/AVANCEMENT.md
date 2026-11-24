@@ -7,6 +7,7 @@
 ## ▶ Reprise — état au 2026-11-24
 
 ### Où en est le code
+- Conteneurs à jour depuis le 2026-11-24 (`docker compose up -d --build`, SMTP et `SESSION_SECRET` dans le `.env` de la racine).
 - `main` (= `origin/main`) : phases 2, 4 et 4 bis (notifications, charges par trimestre, quotes-parts datées, indices
   IRL de l'INSEE, rôles des comptes), refonte du front, multipropriétaires. Phase 4 bis validée par Thomas le 2026-11-24.
   `npm run verify` : 112 tests API, 74 tests front. Détail : HISTORIQUE.md.
@@ -25,10 +26,7 @@
 - [x] Onglet Propriétaires validé (« très bien, on part là-dessus »). Charges par trimestre et prorata validés.
 
 ### Prochaines étapes, dans l'ordre
-1. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, blocage AppArmor, puis `docker compose up -d --build`),
-   avec `SESSION_SECRET` et les cinq variables `SMTP_*` (à copier de `apps/api/.env` dans le `.env` de la racine et à
-   passer dans `docker-compose.yml`).
-2. Suite : phase 3 (rapprochement bancaire) ou écrans restants de la maquette (Paiements, Synchro bancaire, Impôts,
+1. Suite : phase 3 (rapprochement bancaire) ou écrans restants de la maquette (Paiements, Synchro bancaire, Impôts,
    Interventions, Documents, États des lieux, dossier locataire), en gardant la répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1).
 
 ### Compte bloqué
@@ -36,7 +34,7 @@
 
 ### E-mail (SMTP)
 Configuré dans `apps/api/.env` (Gmail, mot de passe d'application ; ignoré par git, **jamais dans le dépôt**). L'API ne
-relit ce fichier qu'au démarrage. L'e-mail part à l'adresse du compte (Paramètres → Identité), qui est aussi l'identifiant.
+relit ce fichier qu'au démarrage. Pour les conteneurs : mêmes variables `SMTP_*` dans le `.env` de la racine. L'e-mail part à l'adresse du compte (Paramètres → Identité), qui est aussi l'identifiant.
 
 ### Relancer l'environnement de test à distance (Tailscale)
 ```bash

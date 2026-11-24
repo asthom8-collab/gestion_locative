@@ -34,6 +34,14 @@ services:
       # Secret des sessions, dans le .env de la racine (openssl rand -hex 32)
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET manquant dans .env}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # E-mail des notifications (facultatif : sans SMTP_HOST, pas d'e-mail), dans le .env de la racine
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      # Adresse de l'application, pour les liens des notifications (facultatif)
+      APP_URL: ${APP_URL:-}
     ports:
       - "127.0.0.1:3001:3001"
     volumes:

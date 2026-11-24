@@ -167,6 +167,8 @@ colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locata
 - Nouvelle commande `npm run reset-password -- <email>` (apps/api) pour un compte bloqué : mot de passe provisoire,
   sessions fermées. Utilisée une première fois pour le compte administrateur de Thomas.
 - Branche `phase4b-notifications` fusionnée dans `main` et poussée.
+- Conteneurs remplacés après `sudo snap restart docker` (blocage AppArmor levé) : variables `SMTP_*` et `APP_URL`
+  passées à l'API dans `docker-compose.yml` ; `SMTP_PORT` vide → 465 par défaut.
 
 ### 2026-11-23
 - Second test de Thomas : e-mail du compte rendu modifiable, accès aux dates de détention. Le prorata des charges par trimestre « a l'air de bien fonctionner ».
