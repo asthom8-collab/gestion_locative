@@ -53,6 +53,9 @@ Sur une autre base : `npx prisma migrate deploy` dans `apps/api`.
 - Purge des anciens commits sur GitHub (`5424658`, `44e1a9c`) : demande au support GitHub si Thomas le souhaite.
 
 ### Points d'attention
+- Dev (API 3002) et conteneurs partagent la **base** mais pas les **fichiers** (`apps/api/storage` contre le volume
+  `app_storage`) : un document ou une quittance créé d'un côté s'ouvre en 404 de l'autre. Copie au besoin :
+  `docker compose cp apps/api/storage/documents api:/app/storage/`.
 - Avant une exposition sur Internet : HTTPS puis `COOKIE_SECURE=true`, limitation des tentatives de connexion, en-têtes de sécurité dans nginx.
 - Racine : `package.json` contient des devDependencies inutilisées (`typescript ^7`, `@types/node ^26`), à nettoyer.
 - Plus tard : envoi des quittances par e-mail (`Receipt.sentAt`, possible une fois le SMTP en place), reçu pour un paiement partiel.
