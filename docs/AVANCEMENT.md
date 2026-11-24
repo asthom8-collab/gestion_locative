@@ -4,7 +4,7 @@
 > Détails des phases livrées et journal : [HISTORIQUE.md](HISTORIQUE.md) (à consulter au besoin, à compléter en fin de session).
 > Description technique (API, modèle de données, règles métier, tests) : [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## ▶ Reprise — état au 2026-11-24
+## ▶ Reprise — état au 2026-11-24 (soir) : on attaque la phase 3 (rapprochement bancaire)
 
 ### Où en est le code
 - Conteneurs à jour depuis le 2026-11-24 (`docker compose up -d --build`, SMTP et `SESSION_SECRET` dans le `.env` de la racine).
@@ -28,8 +28,18 @@ Indices IRL, comptes et rôles, régularisation à refaire, badges, ntfy, e-mail
 prorata. Détail : HISTORIQUE.md. Exemple en base : bien « Démo régularisation » (`npm run demo:regularisation`).
 
 ### Prochaines étapes, dans l'ordre
-1. Phase 3 (rapprochement bancaire) ou écrans restants (Synchro bancaire, Impôts, Interventions,
-   États des lieux — gros morceau —, dossier locataire), en gardant la répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1).
+1. **Phase 3 : rapprochement bancaire** (choisie par Thomas le 2026-11-24, à démarrer le 2026-11-25).
+   - Existant : modèle `BankTransaction` (externalId unique, montant, libellé, date, statut UNMATCHED/MATCHED/IGNORED),
+     lien 1-1 avec `RentPayment.bankTransactionId`, `RentPayment.source` (MANUAL/…) ; un paiement venant de la banque
+     ne peut pas être annulé à la main (409, déjà en place). Écran « Synchro bancaire » dans la maquette (`BankView`).
+   - **Questions à poser à Thomas avant de coder** : banque(s) concernée(s) et formats d'export disponibles (CSV, OFX,
+     QIF) ; import de fichier d'abord, ou connexion automatique (agrégateur type GoCardless Bank Account Data, avec
+     consentement à renouveler tous les 90 jours) ; un compte par bien ou un compte commun ; règles de rapprochement
+     (montant exact + nom du locataire dans le libellé, tolérance de date) ; que faire des virements partiels ou groupés.
+   - Il manquera sans doute : rattachement du compte au propriétaire (`BankTransaction` n'a ni `userId` ni compte),
+     libellé de rapprochement par bail (le `matchLabel` de la maquette). Prévoir les données de démo (`npm run demo`).
+2. Ensuite : écrans restants (Impôts, Interventions, États des lieux — gros morceau —, dossier locataire), en gardant
+   la répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1).
 
 ### Compte bloqué
 `npm run reset-password -- <email>` dans `apps/api` : mot de passe provisoire (sans e-mail : liste des comptes).
