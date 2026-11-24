@@ -106,6 +106,8 @@ quittance impossible…). Le corps est toujours `{ "error": "message en françai
   changer (nouveau mot de passe, réinitialisation par l'administrateur) ferme toutes les sessions ouvertes.
 - **Comptes** : pas d'inscription libre. L'administrateur crée les comptes avec un mot de passe provisoire
   (`mustChangePassword`) ; tant qu'il n'est pas changé, seules `GET /me`, `PUT /me/password` et la déconnexion répondent (403 sinon).
+  Compte bloqué (y compris le dernier administrateur) : `npm run reset-password -- <email>` dans `apps/api`
+  (`prisma/reset-password.ts`, base de `DATABASE_URL`) affiche un mot de passe provisoire et ferme les sessions du compte.
 - **Échec de connexion** : même message pour un e-mail inconnu et un mauvais mot de passe, avec le même temps de calcul.
 - **Droits** : un utilisateur ne voit et ne modifie que les biens dont il est (co)propriétaire, et tout ce qui en
   dépend (baux, échéances, quittances). Les copropriétaires d'un bien ont **tous les mêmes droits**. Un locataire est

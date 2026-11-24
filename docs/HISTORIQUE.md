@@ -162,6 +162,12 @@ colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locata
 
 ## Journal
 
+### 2026-11-24
+- Validés par Thomas : indices IRL (import INSEE), comptes et rôles, notifications ntfy. Phase 4 bis complète.
+- Nouvelle commande `npm run reset-password -- <email>` (apps/api) pour un compte bloqué : mot de passe provisoire,
+  sessions fermées. Utilisée une première fois pour le compte administrateur de Thomas.
+- Branche `phase4b-notifications` fusionnée dans `main` et poussée.
+
 ### 2026-11-23
 - Second test de Thomas : e-mail du compte rendu modifiable, accès aux dates de détention. Le prorata des charges par trimestre « a l'air de bien fonctionner ».
 - Demandes de Thomas, faites : alerte de régularisation périmée (tableau de bord, Charges, bail, cloche) avec un exemple en base

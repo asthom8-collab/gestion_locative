@@ -4,34 +4,35 @@
 > Détails des phases livrées et journal : [HISTORIQUE.md](HISTORIQUE.md) (à consulter au besoin, à compléter en fin de session).
 > Description technique (API, modèle de données, règles métier, tests) : [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## ▶ Reprise — état au 2026-11-23 (soir)
+## ▶ Reprise — état au 2026-11-24
 
 ### Où en est le code
-- `main` (= `origin/main`) : phases 2 et 4, refonte du front, multipropriétaires.
-- Branche locale `phase4b-notifications` (non poussée) : phase 4 bis (notifications, charges par trimestre, quotes-parts
-  datées) et retours de Thomas du 2026-11-23. `npm run verify` : 112 tests API, 74 tests front. Détail : HISTORIQUE.md.
+- `main` (= `origin/main`) : phases 2, 4 et 4 bis (notifications, charges par trimestre, quotes-parts datées, indices
+  IRL de l'INSEE, rôles des comptes), refonte du front, multipropriétaires. Phase 4 bis validée par Thomas le 2026-11-24.
+  `npm run verify` : 112 tests API, 74 tests front. Détail : HISTORIQUE.md.
 
-### À tester par Thomas (livré le 2026-11-23 au soir)
-- [ ] **Indices IRL** : menu Référentiels → Indices IRL (sortis des Paramètres, valeurs espacées, évolution sur un an,
+### Phase 4 bis : validée par Thomas (2026-11-24)
+- [x] **Indices IRL** (validé par Thomas le 2026-11-24) : menu Référentiels → Indices IRL (sortis des Paramètres, valeurs espacées, évolution sur un an,
   source). Import **automatique** depuis l'INSEE chaque jour (40 trimestres déjà importés) + « Vérifier maintenant ».
-- [ ] **Comptes** : de retour dans Paramètres (administrateur), deux rôles : Administrateur / Propriétaire (un
+- [x] **Comptes** (validé par Thomas le 2026-11-24) : de retour dans Paramètres (administrateur), deux rôles : Administrateur / Propriétaire (un
   propriétaire ne voit que lui-même et ses copropriétaires). Rôle au choix à la création, modifiable ensuite.
 - [x] **Régularisation à refaire** (validé par Thomas le 2026-11-23) : exemple en base, bien « Démo régularisation » (locataire Camille Exemple, eau
   passée de 360 à 450 € après la régularisation 2025). À voir : tableau de bord, cloche, badge orange (Charges),
   bandeau en haut de la fiche du bail → « Voir et mettre à jour » → « Mettre à jour la régularisation ».
 - [x] **Badges** de la page Charges plus visibles (« c'est super ») (Régulariser / Régularisée / Régularisation à refaire).
-- [ ] ntfy : sujet dans Paramètres → Notifications, puis « Envoyer un essai ».
+- [x] ntfy : notifications reçues par Thomas (2026-11-24).
 - [x] E-mail : SMTP Gmail en place, notification reçue par Thomas (le second compte a une adresse fictive : échec normal).
 - [x] Onglet Propriétaires validé (« très bien, on part là-dessus »). Charges par trimestre et prorata validés.
 
 ### Prochaines étapes, dans l'ordre
-1. Retours de Thomas sur les cases restantes (indices IRL, comptes et rôles, ntfy).
-2. Fusionner `phase4b-notifications` dans `main` et pousser.
-3. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, blocage AppArmor, puis `docker compose up -d --build`),
+1. Remplacer les conteneurs (`sudo snap restart docker` par Thomas, blocage AppArmor, puis `docker compose up -d --build`),
    avec `SESSION_SECRET` et les cinq variables `SMTP_*` (à copier de `apps/api/.env` dans le `.env` de la racine et à
    passer dans `docker-compose.yml`).
-4. Suite : phase 3 (rapprochement bancaire) ou écrans restants de la maquette (Paiements, Synchro bancaire, Impôts,
+2. Suite : phase 3 (rapprochement bancaire) ou écrans restants de la maquette (Paiements, Synchro bancaire, Impôts,
    Interventions, Documents, États des lieux, dossier locataire), en gardant la répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1).
+
+### Compte bloqué
+`npm run reset-password -- <email>` dans `apps/api` : mot de passe provisoire (sans e-mail : liste des comptes).
 
 ### E-mail (SMTP)
 Configuré dans `apps/api/.env` (Gmail, mot de passe d'application ; ignoré par git, **jamais dans le dépôt**). L'API ne

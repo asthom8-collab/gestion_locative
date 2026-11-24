@@ -8,6 +8,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "ts-node prisma/seed.ts",
     "demo:regularisation": "ts-node --transpile-only prisma/demo-regularisation.ts",
+    "reset-password": "ts-node --transpile-only prisma/reset-password.ts",
     "prisma:studio": "prisma studio",
     "test": "vitest run",
     "test:watch": "vitest"

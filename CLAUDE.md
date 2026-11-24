@@ -33,6 +33,7 @@ docker compose up -d db
 npm run dev                 # ts-node-dev, port 3001
 npm run prisma:migrate      # nouvelle migration (dev)
 npm run prisma:seed         # données de test (admin@local.dev / changeme)
+npm run reset-password -- <email>   # mot de passe provisoire pour un compte bloqué (sans e-mail : liste des comptes)
 npm run build               # tsc, vérification avant push
 
 # Web (dans apps/web) : Vite, avec un proxy /api vers localhost:3001
