@@ -172,6 +172,8 @@ colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locata
 - Branche `paiements-documents` : page **Paiements** (encaissements de l'année, loyers à relancer, export CSV) et
   page **Documents** (fichiers rattachés à un bien ou à un bail, migration `20261124210000_documents`, envoi brut
   dans le corps, signature binaire vérifiée, 15 Mo). Choix de Thomas : rattachement au bail **et** au bien.
+- Documents refait en tuiles (biens / baux) et boutons, sans listes déroulantes, à la demande de Thomas. Données de
+  démonstration `npm run demo`. Paiements et Documents validés, branche fusionnée dans `main` et poussée.
 
 ### 2026-11-23
 - Second test de Thomas : e-mail du compte rendu modifiable, accès aux dates de détention. Le prorata des charges par trimestre « a l'air de bien fonctionner ».

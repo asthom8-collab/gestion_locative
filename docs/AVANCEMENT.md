@@ -8,17 +8,17 @@
 
 ### Où en est le code
 - Conteneurs à jour depuis le 2026-11-24 (`docker compose up -d --build`, SMTP et `SESSION_SECRET` dans le `.env` de la racine).
-- `main` (= `origin/main`) : phases 2, 4 et 4 bis (notifications, charges par trimestre, quotes-parts datées, indices
+- `main` (= `origin/main`) : pages Paiements et Documents (2026-11-24), phases 2, 4 et 4 bis (notifications, charges par trimestre, quotes-parts datées, indices
   IRL de l'INSEE, rôles des comptes), refonte du front, multipropriétaires. Phase 4 bis validée par Thomas le 2026-11-24.
-  `npm run verify` : 119 tests API, 81 tests front (branche `paiements-documents`). Détail : HISTORIQUE.md.
+  `npm run verify` : 119 tests API, 82 tests front. Détail : HISTORIQUE.md.
 
-### À tester par Thomas (branche locale `paiements-documents`, 2026-11-24)
+### Paiements et Documents : validés par Thomas (2026-11-24)
 Exemple en base : bien **« Démo paiements »** (Léa Exemple : 12 échéances payées, 1 partielle, 2 en retard ; 10 documents
 fictifs, dont 2 sur « Démo régularisation »). `npm run demo` (apps/api) recrée les exemples manquants ;
 `npm run demo:paiements-documents -- --supprimer` retire celui-ci.
 - [x] **Paiements** (menu Finances) validé par Thomas le 2026-11-24 : année et filtre par bien, totaux, « À relancer »,
   journal des encaissements, export CSV.
-- [ ] **Documents** (menu Gestion), refait le 2026-11-24 à la demande de Thomas (pas de listes déroulantes, téléphone) :
+- [x] **Documents** (menu Gestion), validé (« c'est parfait »), refait le 2026-11-24 à la demande de Thomas (pas de listes déroulantes, téléphone) :
   tuiles des **biens** et des **baux** (en cours, terminés) avec le nombre de documents ; une tuile ouvre le dossier,
   documents rangés par type, filtre par boutons, « Ajouter » rattaché au dossier, type choisi par boutons. Dans un
   bien, tuiles de ses baux. Fichiers : PDF, image, Word, Excel ; 15 Mo. Migration `documents`.
@@ -28,9 +28,7 @@ Indices IRL, comptes et rôles, régularisation à refaire, badges, ntfy, e-mail
 prorata. Détail : HISTORIQUE.md. Exemple en base : bien « Démo régularisation » (`npm run demo:regularisation`).
 
 ### Prochaines étapes, dans l'ordre
-1. Retours de Thomas sur Paiements et Documents, puis fusion dans `main`, push et reconstruction des conteneurs
-   (`docker compose up -d --build` : migration `documents` appliquée au démarrage de l'API, nginx à 16 Mo).
-2. Ensuite : phase 3 (rapprochement bancaire) ou écrans restants (Synchro bancaire, Impôts, Interventions,
+1. Phase 3 (rapprochement bancaire) ou écrans restants (Synchro bancaire, Impôts, Interventions,
    États des lieux — gros morceau —, dossier locataire), en gardant la répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1).
 
 ### Compte bloqué
