@@ -108,11 +108,22 @@ Mise en place prévue :
 - Le serveur de la maison reste l'environnement de développement et de test (comme aujourd'hui).
 - Les vraies données (banque principale, vrais biens) n'arrivent qu'à la fin, une fois tout cela en place.
 
-## Questions à trancher avec Thomas
+## Réponses de Thomas (2026-11-26) et conséquences
 
-1. Quels régimes ont réellement les biens (location nue micro ou réel, LMNP micro ou réel, Pinel…) ? On commence par ceux-là.
-2. Un bien au LMNP réel : la liasse est-elle faite aujourd'hui par un comptable ou un service en ligne ? Quels
-   éléments d'acquisition sont disponibles (prix, frais, mobilier, emprunt) ?
-3. Y a-t-il des emprunts en cours sur les biens ?
-4. États des lieux : signature sur place seulement au début, ou tout de suite à distance ?
-5. Hébergement : VPS (on gère le serveur, moins cher) ou plateforme gérée (plus simple, plus cher) ? Nom de domaine à acheter.
+1. **Régimes : LMNP et Pinel.** Priorités : LMNP (micro-BIC et réel, liasse 2031 / 2033) et Pinel (revenus fonciers
+   + réduction d'impôt). La location nue « classique » reste possible ensuite (même calcul que Pinel, sans réduction).
+2. **Un bien au LMNP réel** : à préciser à la reprise (qui fait la liasse aujourd'hui, éléments d'acquisition).
+3. **Emprunts en cours** : modèle `Loan` nécessaire (intérêts et assurance de l'année, tableau d'amortissement importé ou saisi).
+4. **États des lieux : signature sur place et à distance.** Proposition :
+   - Signature tracée à l'écran **et** code à usage unique envoyé au locataire (e-mail, SMS plus tard) au moment de
+     signer, sur place comme à distance ; dossier de preuve (horodatage, empreinte SHA-256 du PDF, adresse IP,
+     appareil, adresse de réception du code) ; PDF envoyé aux deux parties aussitôt. C'est une signature
+     électronique simple, admise pour un état des lieux (décret 2016-382 : support papier ou électronique).
+   - Identité numérique publique (FranceConnect, France Identité) : réservée aux services habilités, pas réaliste ici.
+   - Plus tard si besoin : signature avancée par un prestataire français (Yousign, payant), avec vérification de la
+     pièce d'identité.
+5. **Hébergement : meilleur rapport qualité / prix, gestion de la pile automatisée.** Proposition : **VPS OVHcloud**
+   (gamme d'entrée, centre de données en France), sauvegardes restic chiffrées vers un **stockage objet Scaleway**
+   (autre hébergeur français) et vers le serveur de la maison ; nom de domaine chez OVHcloud. Installation par un
+   script (pare-feu, Tailscale, Docker, Caddy, mises à jour automatiques, sauvegardes planifiées) et déploiement par
+   la CI (images GHCR, `prisma migrate deploy`). Tarifs à vérifier au moment de commander.
