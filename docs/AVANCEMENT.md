@@ -4,7 +4,7 @@
 > Détails des phases livrées et journal : [HISTORIQUE.md](HISTORIQUE.md) (à consulter au besoin, à compléter en fin de session).
 > Description technique (API, modèle de données, règles métier, tests) : [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## ▶ Reprise — état au 2026-11-26 : phase 3 (import CSV, suggestions, connexion bancaire) fusionnée dans `main`
+## ▶ Reprise — état au 2026-11-26 : phase 3 fusionnée dans `main` ; plan de la suite proposé (PLAN-SUITE.md)
 
 ### Où en est le code
 - `main` (= `origin/main`) : phases 2, 3 (rapprochement, fusionnée le 2026-11-26 en un seul commit, branche supprimée),
@@ -37,7 +37,7 @@ propose, Thomas valide (partiel = paiement partiel ; virement groupé réparti s
 - [x] **Connexion réelle testée** avec une **2e banque** (compte sans loyers, pour essayer) : accord, session jusqu'au
   24/05/2027, lecture OK (2 opérations en 90 jours, avec référence, émetteur et motif). Relié pour l'instant au compte
   **« Démo — compte commun »** : `npm run demo:banque -- --supprimer` le supprimerait avec la connexion.
-- [ ] Connecter la banque principale (compte des loyers) sur un compte à part, quand Thomas le souhaite.
+- [ ] Banque principale (compte des loyers) : reportée à la fin, à la demande de Thomas (2026-11-26).
 - [x] **Leçons du test corrigées** (2026-11-26) : (1) l'import et la synchro ne génèrent plus d'échéances que pour les
   baux **déjà suivis**, à partir de leur 1re échéance (avant : 35 échéances dont 22 sur de vrais biens) ; (2) à la
   1re connexion d'un compte qui a déjà des opérations, avertissement (nombre, date de la dernière, conseil d'un compte à part).
@@ -47,9 +47,11 @@ propose, Thomas valide (partiel = paiement partiel ; virement groupé réparti s
   les débits aux charges ou à la future comptabilité LMNP.
 
 ### Prochaines étapes, dans l'ordre
-1. Connecter la banque principale (compte des loyers) sur un compte à part, quand Thomas le souhaite.
-2. Ensuite : écrans restants (Impôts, Interventions, États des lieux — gros morceau —, dossier locataire), en gardant
-   la répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1).
+Plan détaillé proposé le 2026-11-26 : **[PLAN-SUITE.md](PLAN-SUITE.md)** (à valider avec Thomas, questions en fin de fichier).
+1. Interventions (travaux faits soi-même ou par un professionnel, nature fiscale) → 2. Impôts location nue et
+   micro-BIC (2042 / 2044 / 2042-C-PRO) → 3. LMNP au réel (amortissements, liasse 2031 / 2033) → 4. Mise en ligne
+   (VPS chez un hébergeur français, HTTPS, durcissement, sauvegardes) → 5. États des lieux (PDF, validation par les deux parties).
+- Banque principale de Thomas : **pas de connexion** pour l'instant (données sensibles, à voir à la fin, une fois hébergé).
 
 ### Compte bloqué
 `npm run reset-password -- <email>` dans `apps/api` : mot de passe provisoire (sans e-mail : liste des comptes).
