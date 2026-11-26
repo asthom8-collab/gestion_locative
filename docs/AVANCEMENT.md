@@ -4,14 +4,13 @@
 > Détails des phases livrées et journal : [HISTORIQUE.md](HISTORIQUE.md) (à consulter au besoin, à compléter en fin de session).
 > Description technique (API, modèle de données, règles métier, tests) : [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## ▶ Reprise — état au 2026-11-26 : leçons du test de la phase 3 corrigées, fusion à valider par Thomas
+## ▶ Reprise — état au 2026-11-26 : phase 3 (import CSV, suggestions, connexion bancaire) fusionnée dans `main`
 
 ### Où en est le code
-- Branche **`phase3-rapprochement`** (poussée, pas encore fusionnée) : import CSV, suggestions, écran « Synchro
-  bancaire », connexion Enable Banking. API de dev (3002) et Vite (5176) laissés allumés le 2026-11-25 au soir.
-  `npm run verify` : 144 tests API, 94 tests front. Migration `20261125090000_rapprochement_bancaire` à appliquer
-  (`npx prisma migrate deploy`) sur toute autre base.
-- `main` (= `origin/main`) : tout le reste (phases 2, 4, 4 bis, Paiements, Documents), validé par Thomas. Détail : HISTORIQUE.md.
+- `main` (= `origin/main`) : phases 2, 3 (rapprochement, fusionnée le 2026-11-26 en un seul commit, branche supprimée),
+  4, 4 bis, Paiements, Documents. Détail : HISTORIQUE.md. `npm run verify` : 144 tests API, 94 tests front.
+  Migrations `20261125090000_rapprochement_bancaire` et `20261125220000_connexion_bancaire` à appliquer
+  (`npx prisma migrate deploy`) sur toute autre base (conteneurs compris).
 
 ### Phase 3 : choix de Thomas (2026-11-25)
 Import de fichier **et** connexion automatique ; banque en **CSV seulement** ; **un compte commun** ; l'application
@@ -48,11 +47,8 @@ propose, Thomas valide (partiel = paiement partiel ; virement groupé réparti s
   les débits aux charges ou à la future comptabilité LMNP.
 
 ### Prochaines étapes, dans l'ordre
-1. Fusion de `phase3-rapprochement` dans `main` et push (**après accord de Thomas**, leçons du test corrigées).
-   Fusion **en un seul commit** (`git merge --squash`) puis suppression de la branche sur GitHub : d'anciens commits de
-   la branche citent des noms de banques, retirés depuis (formules génériques demandées par Thomas).
-2. Connexion automatique (Enable Banking), si la banque est couverte.
-3. Ensuite : écrans restants (Impôts, Interventions, États des lieux — gros morceau —, dossier locataire), en gardant
+1. Connecter la banque principale (compte des loyers) sur un compte à part, quand Thomas le souhaite.
+2. Ensuite : écrans restants (Impôts, Interventions, États des lieux — gros morceau —, dossier locataire), en gardant
    la répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1).
 
 ### Compte bloqué
