@@ -14,6 +14,7 @@ export type CreateLeaseInput = {
   irlReference?: number
   irlQuarter?: number
   irlYear?: number
+  bankLabel?: string | null
 }
 
 export type UpdateLeaseInput = Partial<Omit<CreateLeaseInput, 'propertyId' | 'tenantId'>>

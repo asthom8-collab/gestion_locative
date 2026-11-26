@@ -93,7 +93,7 @@ describe('fiche du bail', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
     await waitFor(() => expect(screen.queryByText('Modifier le bail', { selector: 'h3' })).not.toBeInTheDocument())
     const call = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH')!
-    expect(JSON.parse(call[1]!.body as string)).toEqual({ type: 'UNFURNISHED', rentAmount: 820, chargesAmount: 50, rentDayOfMonth: 5, irlReference: 142.06, irlQuarter: 2, irlYear: 2024 })
+    expect(JSON.parse(call[1]!.body as string)).toEqual({ type: 'UNFURNISHED', rentAmount: 820, chargesAmount: 50, rentDayOfMonth: 5, irlReference: 142.06, irlQuarter: 2, irlYear: 2024, bankLabel: '' })
   })
 
   it('affiche une erreur pour un bail inconnu', async () => {

@@ -13,7 +13,7 @@ import { Modal } from '../components/ui/Modal'
 import { Field, inputCls } from '../components/ui/Field'
 import { Empty } from '../components/ui/Empty'
 import { StatCard } from '../components/ui/StatCard'
-import { Receipt, ChevronLeft, ChevronRight, Check, Download, Euro, CircleCheck, AlertCircle, Plus } from '../components/icons'
+import { Receipt, ChevronLeft, ChevronRight, Check, Download, Euro, CircleCheck, AlertCircle, Plus, Landmark } from '../components/icons'
 import { PaymentStatusBadge } from '../components/ui/PaymentStatusBadge'
 import type { RentPayment } from '../types'
 
@@ -134,7 +134,10 @@ export function Rents() {
               </div>
 
               <div className="flex flex-wrap gap-2 mt-3">
-                {p.status !== 'RECEIVED' && (
+                {p.bankTransactionId && (
+                  <Link to="/bank" className={`${linkBtn} text-emerald-700`}><Landmark size={14} />Rapproché en banque</Link>
+                )}
+                {p.status !== 'RECEIVED' && !p.bankTransactionId && (
                   <button className={linkBtn} onClick={() => openPay(p)}><Check size={14} />Encaisser</button>
                 )}
                 {p.status === 'RECEIVED' && !p.receipt && (
@@ -149,10 +152,10 @@ export function Rents() {
                     <a className={linkBtn} href={api.rentPayments.receiptUrl(p.id, true)}><Download size={14} />Télécharger</a>
                   </>
                 )}
-                {p.receivedAmount !== null && (
+                {p.receivedAmount !== null && !p.bankTransactionId && (
                   <button className={linkBtn} onClick={() => openPay(p)}>Modifier le paiement</button>
                 )}
-                {p.receivedAmount !== null && (
+                {p.receivedAmount !== null && !p.bankTransactionId && (
                   <button className={`${linkBtn} text-rose-600`}
                     onClick={() => confirm('Annuler ce paiement ? La quittance éventuelle sera supprimée.') && run(() => cancelM.mutateAsync(p.id))}>
                     Annuler le paiement

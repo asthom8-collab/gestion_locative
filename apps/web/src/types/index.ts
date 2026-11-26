@@ -57,6 +57,8 @@ export interface Lease {
   irlReference?: number
   irlQuarter?: number
   irlYear?: number
+  /** Texte attendu dans le libellé du virement (rapprochement bancaire) */
+  bankLabel?: string | null
   active: boolean
   createdAt: string
   property?: Pick<Property, 'id' | 'name' | 'address' | 'city'>
@@ -104,7 +106,7 @@ export interface CreateLeaseInput {
 }
 
 /** PATCH /api/leases/:id : le bien et le locataire ne changent pas. */
-export type UpdateLeaseInput = Partial<Pick<CreateLeaseInput, 'type' | 'rentAmount' | 'chargesAmount' | 'rentDayOfMonth' | 'irlReference' | 'irlQuarter' | 'irlYear'>>
+export type UpdateLeaseInput = Partial<Pick<CreateLeaseInput, 'type' | 'rentAmount' | 'chargesAmount' | 'rentDayOfMonth' | 'irlReference' | 'irlQuarter' | 'irlYear'>> & { bankLabel?: string | null }
 
 export type PaymentStatus = 'PENDING' | 'RECEIVED' | 'PARTIAL' | 'LATE'
 
@@ -130,6 +132,9 @@ export interface RentPayment {
   paymentDate: string | null
   status: PaymentStatus
   dueDate: string
+  /** MANUAL : saisi à la main ; BANK_MATCH : rapproché d'une opération bancaire */
+  source: 'MANUAL' | 'BANK_MATCH'
+  bankTransactionId: string | null
   receipt: Receipt | null
   lease: {
     id: string
@@ -324,3 +329,93 @@ export interface DocumentItem {
 
 export interface DocumentFilter { leaseId?: string; propertyId?: string; category?: DocumentCategory }
 export type DocumentTarget = { leaseId: string } | { propertyId: string }
+
+// ── Rapprochement bancaire ──
+
+export interface BankAccount {
+  id: string
+  name: string
+  createdAt: string
+  transactionCount: number
+  /** Encaissements pas encore rapprochés */
+  toMatchCount: number
+  lastTransactionDate: string | null
+  // Connexion automatique (Enable Banking)
+  connected: boolean
+  /** Accord demandé à la banque, en attente de l'adresse de retour */
+  connectionPending: boolean
+  /** Comptes proposés par la banque, à choisir */
+  accountChoices: { uid: string; label: string }[] | null
+  bankName: string | null
+  remoteLabel: string | null
+  consentExpiresAt: string | null
+  lastSyncAt: string | null
+  lastSyncError: string | null
+}
+
+export interface BankConnectionBanks {
+  configured: boolean
+  banks: { name: string; beta: boolean }[]
+}
+
+export interface BankSyncResult {
+  imported: number
+  duplicates: number
+  from: string | null
+  to: string | null
+  since: string
+}
+
+export type BankTransactionStatus = 'UNMATCHED' | 'MATCHED' | 'IGNORED'
+
+/** Échéance résumée, telle que la renvoient les opérations et leurs suggestions */
+export interface BankPaymentSummary {
+  id: string
+  periodYear: number
+  periodMonth: number
+  expectedAmount: number
+  receivedAmount: number | null
+  status: PaymentStatus
+  dueDate?: string
+  lease: {
+    id: string
+    property: { id: string; name: string }
+    tenant: { id: string; firstName: string; lastName: string }
+  }
+}
+
+export interface BankAllocation { rentPaymentId: string; amount: number }
+
+export interface BankSuggestion {
+  allocations: (BankAllocation & { payment: BankPaymentSummary })[]
+  score: number
+  confidence: 'high' | 'medium'
+  reasons: string[]
+}
+
+export interface BankTransaction {
+  id: string
+  accountId: string
+  account: { id: string; name: string }
+  amount: number
+  label: string
+  date: string
+  status: BankTransactionStatus
+  rentPayments: BankPaymentSummary[]
+  suggestions?: BankSuggestion[]
+}
+
+export interface BankTransactionFilter {
+  accountId?: string
+  status?: BankTransactionStatus
+  direction?: 'credit' | 'debit'
+  year?: number
+}
+
+export interface BankImportResult {
+  imported: number
+  duplicates: number
+  skipped: { line: number; reason: string }[]
+  from: string | null
+  to: string | null
+}

@@ -4,41 +4,55 @@
 > Détails des phases livrées et journal : [HISTORIQUE.md](HISTORIQUE.md) (à consulter au besoin, à compléter en fin de session).
 > Description technique (API, modèle de données, règles métier, tests) : [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## ▶ Reprise — état au 2026-11-24 (soir) : on attaque la phase 3 (rapprochement bancaire)
+## ▶ Reprise — état au 2026-11-26 : leçons du test de la phase 3 corrigées, fusion à valider par Thomas
 
 ### Où en est le code
-- Conteneurs à jour depuis le 2026-11-24 (`docker compose up -d --build`, SMTP et `SESSION_SECRET` dans le `.env` de la racine).
-- `main` (= `origin/main`) : pages Paiements et Documents (2026-11-24), phases 2, 4 et 4 bis (notifications, charges par trimestre, quotes-parts datées, indices
-  IRL de l'INSEE, rôles des comptes), refonte du front, multipropriétaires. Phase 4 bis validée par Thomas le 2026-11-24.
-  `npm run verify` : 119 tests API, 82 tests front. Détail : HISTORIQUE.md.
+- Branche **`phase3-rapprochement`** (poussée, pas encore fusionnée) : import CSV, suggestions, écran « Synchro
+  bancaire », connexion Enable Banking. API de dev (3002) et Vite (5176) laissés allumés le 2026-11-25 au soir.
+  `npm run verify` : 144 tests API, 94 tests front. Migration `20261125090000_rapprochement_bancaire` à appliquer
+  (`npx prisma migrate deploy`) sur toute autre base.
+- `main` (= `origin/main`) : tout le reste (phases 2, 4, 4 bis, Paiements, Documents), validé par Thomas. Détail : HISTORIQUE.md.
 
-### Paiements et Documents : validés par Thomas (2026-11-24)
-Exemple en base : bien **« Démo paiements »** (Léa Exemple : 12 échéances payées, 1 partielle, 2 en retard ; 10 documents
-fictifs, dont 2 sur « Démo régularisation »). `npm run demo` (apps/api) recrée les exemples manquants ;
-`npm run demo:paiements-documents -- --supprimer` retire celui-ci.
-- [x] **Paiements** (menu Finances) validé par Thomas le 2026-11-24 : année et filtre par bien, totaux, « À relancer »,
-  journal des encaissements, export CSV.
-- [x] **Documents** (menu Gestion), validé (« c'est parfait »), refait le 2026-11-24 à la demande de Thomas (pas de listes déroulantes, téléphone) :
-  tuiles des **biens** et des **baux** (en cours, terminés) avec le nombre de documents ; une tuile ouvre le dossier,
-  documents rangés par type, filtre par boutons, « Ajouter » rattaché au dossier, type choisi par boutons. Dans un
-  bien, tuiles de ses baux. Fichiers : PDF, image, Word, Excel ; 15 Mo. Migration `documents`.
-
-### Phase 4 bis : validée par Thomas (2026-11-23 et 24)
-Indices IRL, comptes et rôles, régularisation à refaire, badges, ntfy, e-mail, onglet Propriétaires, trimestres et
-prorata. Détail : HISTORIQUE.md. Exemple en base : bien « Démo régularisation » (`npm run demo:regularisation`).
+### Phase 3 : choix de Thomas (2026-11-25)
+Import de fichier **et** connexion automatique ; banque en **CSV seulement** ; **un compte commun** ; l'application
+propose, Thomas valide (partiel = paiement partiel ; virement groupé réparti sur plusieurs échéances).
+- [x] **Import CSV** (format détecté : en-tête, `;`/`,`, Débit/Crédit ou Montant, Windows-1252), sans doublon au réimport.
+- [x] **Suggestions** (montant, libellé du bail `bankLabel` ou nom du locataire, date), « Tout valider » pour les sûres,
+  choix manuel avec montants, Ignorer, Défaire. Règles : ARCHITECTURE.md § 5.
+- [x] **Testé par Thomas** (2026-11-25) : import d'un vrai relevé CSV de sa banque principale (853 opérations, reconnu tel
+  quel), rapprochements. Relevé ensuite **supprimé à sa demande** (opérations, 2 rapprochements défaits, 35 échéances
+  créées par l'import) : la base de dev ne garde que la démo.
+- [x] Validation en bloc : liste de ce qui sera validé, lignes décochables (demande de Thomas, 2026-11-25).
+- [ ] **Connexion automatique** — banque principale de Thomas : un réseau mutualiste français. Solutions étudiées le 2026-11-25 :
+  GoCardless fermé aux inscriptions ; API officielle de la banque réservée aux prestataires agréés (AISP) ; Powens, Tink, Bridge… offres
+  pour entreprises, payantes ; Woob (lecture du site) fragile avec la double authentification. **Retenu : Enable
+  Banking** (gratuit pour ses propres comptes, sa banque y est listée).
+  Fait le 2026-11-25 : application PRODUCTION « Gestion locative » créée par l'API (le champ certificat de leur site
+  refusait le PEM), clé dans `apps/api/secrets/` (ignoré), identifiant dans `apps/api/.env` (`ENABLE_BANKING_*`).
+  Appel signé vérifié (200), application **inactive** tant qu'aucun compte n'est relié. Adresse de retour provisoire
+  `https://localhost:5176/bank` (http refusé) ; confidentialité = URL du dépôt (page à écrire).
+  Compte relié par Thomas dans le portail : application **active**.
+- [x] **Connecteur** (2026-11-25) : bouton « Connecter la banque » sur le compte, accord sur le site de la banque, adresse
+  de retour à recopier (`https://localhost…`, page en erreur : normal), choix du compte, synchronisation à la demande
+  et toutes les 12 h, alerte avant l'expiration de l'accord (180 jours). Migration `20261125220000_connexion_bancaire`.
+- [x] **Connexion réelle testée** avec une **2e banque** (compte sans loyers, pour essayer) : accord, session jusqu'au
+  24/05/2027, lecture OK (2 opérations en 90 jours, avec référence, émetteur et motif). Relié pour l'instant au compte
+  **« Démo — compte commun »** : `npm run demo:banque -- --supprimer` le supprimerait avec la connexion.
+- [ ] Connecter la banque principale (compte des loyers) sur un compte à part, quand Thomas le souhaite.
+- [x] **Leçons du test corrigées** (2026-11-26) : (1) l'import et la synchro ne génèrent plus d'échéances que pour les
+  baux **déjà suivis**, à partir de leur 1re échéance (avant : 35 échéances dont 22 sur de vrais biens) ; (2) à la
+  1re connexion d'un compte qui a déjà des opérations, avertissement (nombre, date de la dernière, conseil d'un compte à part).
+- Plus tard : adresse de retour en https réelle (certificats Tailscale à activer dans la console + `tailscale serve`) ;
+  pour les conteneurs, monter `apps/api/secrets/` et passer les `ENABLE_BANKING_*` dans `docker-compose.yml`.
+- Idées notées : notification (ntfy/e-mail) quand un loyer est rapproché (la maquette prévoyait un SMS) ; rattacher
+  les débits aux charges ou à la future comptabilité LMNP.
 
 ### Prochaines étapes, dans l'ordre
-1. **Phase 3 : rapprochement bancaire** (choisie par Thomas le 2026-11-24, à démarrer le 2026-11-25).
-   - Existant : modèle `BankTransaction` (externalId unique, montant, libellé, date, statut UNMATCHED/MATCHED/IGNORED),
-     lien 1-1 avec `RentPayment.bankTransactionId`, `RentPayment.source` (MANUAL/…) ; un paiement venant de la banque
-     ne peut pas être annulé à la main (409, déjà en place). Écran « Synchro bancaire » dans la maquette (`BankView`).
-   - **Questions à poser à Thomas avant de coder** : banque(s) concernée(s) et formats d'export disponibles (CSV, OFX,
-     QIF) ; import de fichier d'abord, ou connexion automatique (agrégateur type GoCardless Bank Account Data, avec
-     consentement à renouveler tous les 90 jours) ; un compte par bien ou un compte commun ; règles de rapprochement
-     (montant exact + nom du locataire dans le libellé, tolérance de date) ; que faire des virements partiels ou groupés.
-   - Il manquera sans doute : rattachement du compte au propriétaire (`BankTransaction` n'a ni `userId` ni compte),
-     libellé de rapprochement par bail (le `matchLabel` de la maquette). Prévoir les données de démo (`npm run demo`).
-2. Ensuite : écrans restants (Impôts, Interventions, États des lieux — gros morceau —, dossier locataire), en gardant
+1. Fusion de `phase3-rapprochement` dans `main` et push (**après accord de Thomas**, leçons du test corrigées).
+   Fusion **en un seul commit** (`git merge --squash`) puis suppression de la branche sur GitHub : d'anciens commits de
+   la branche citent des noms de banques, retirés depuis (formules génériques demandées par Thomas).
+2. Connexion automatique (Enable Banking), si la banque est couverte.
+3. Ensuite : écrans restants (Impôts, Interventions, États des lieux — gros morceau —, dossier locataire), en gardant
    la répartition par quote-part pour les impôts (ARCHITECTURE.md § 5.1).
 
 ### Compte bloqué
@@ -79,8 +93,8 @@ Sur une autre base : `npx prisma migrate deploy` dans `apps/api`.
 | Phase | Contenu | État |
 |---|---|---|
 | 2 | Loyers et quittances PDF | livrée |
-| 4 / 4 bis | Charges, régularisation, IRL / notifications, trimestres, quotes-parts datées | livrée / en test |
-| 3 | Rapprochement bancaire (BankTransaction) | à faire |
+| 4 / 4 bis | Charges, régularisation, IRL / notifications, trimestres, quotes-parts datées | livrées |
+| 3 | Rapprochement bancaire (import CSV, suggestions) / connexion automatique | en test / à faire |
 | 5 | Comptabilité LMNP (LmnpEntry) | à faire |
-| US-04 | Documents (Document) | à faire |
+| US-04 | Documents (Document) | livrée |
 | US-22 à 25 | États des lieux (Inventory*) | à faire |

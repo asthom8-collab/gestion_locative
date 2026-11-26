@@ -162,6 +162,27 @@ colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locata
 
 ## Journal
 
+### 2026-11-25
+- Phase 3 démarrée, choix de Thomas : import de fichier **et** connexion automatique ; banque exportant en **CSV
+  seulement** ; **un compte commun** ; l'application **propose** et Thomas **valide** (partiel = paiement partiel,
+  virement groupé réparti).
+- GoCardless Bank Account Data ne prend plus de nouvelles inscriptions (depuis juillet 2025) : piste **Enable Banking**
+  (offre gratuite restreinte à ses propres comptes) pour la connexion automatique, à vérifier avec la banque de Thomas.
+- Branche `phase3-rapprochement` : migration `20261125090000_rapprochement_bancaire` (`BankAccount`,
+  `BankTransaction.accountId`, `Lease.bankLabel`, un virement peut régler plusieurs échéances), import CSV
+  (`lib/bankCsv.ts`), suggestions (`lib/bankMatching.ts`), routes `/api/bank-accounts` et `/api/bank-transactions`,
+  écran « Synchro bancaire » (`/bank`), libellé du virement sur la fiche du bail, Loyers : « Rapproché en banque » à la
+  place de Modifier/Annuler. Démo `npm run demo:banque`. 136 tests API, 86 tests front.
+- Validation en bloc : liste détaillée et cases à décocher (demande de Thomas).
+- Banque principale de Thomas : un réseau mutualiste français. Alternatives étudiées (API de la banque réservée aux AISP, Powens/Tink/Bridge payants,
+  Woob fragile) : Enable Banking retenu. Le champ certificat de leur site refusant le PEM, application PRODUCTION
+  créée par leur API (exige https pour l'adresse de retour, description, adresses de confidentialité et de
+  conditions). Compte relié par Thomas, application active. Connecteur livré (migration
+  `20261125220000_connexion_bancaire`). 143 tests API, 92 tests front.
+- Tests de Thomas : import CSV réel de sa banque reconnu ; connexion d'une 2e banque réussie (0 opération reçue : la
+  synchro reprenait après le CSV, importé sur le même compte de démo). CSV supprimé à sa demande, avec ses effets
+  (2 rapprochements défaits, 35 échéances générées par l'import). Branche poussée pour sauvegarde.
+
 ### 2026-11-24
 - Validés par Thomas : indices IRL (import INSEE), comptes et rôles, notifications ntfy. Phase 4 bis complète.
 - Nouvelle commande `npm run reset-password -- <email>` (apps/api) pour un compte bloqué : mot de passe provisoire,

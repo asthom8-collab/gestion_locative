@@ -46,6 +46,7 @@ model User {
   ownerships     Ownership[]
   createdTenants Tenant[]       @relation("TenantCreatedBy")
   notifications  Notification[]
+  bankAccounts   BankAccount[]
 }
 
 // ─────────────────────────────────────────
@@ -146,6 +147,8 @@ model Lease {
   irlReference   Float?
   irlQuarter     Int?
   irlYear        Int?
+  // Texte attendu dans le libellé du virement du locataire (rapprochement bancaire), ex. « DUPONT LOYER »
+  bankLabel      String?
   active         Boolean   @default(true)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -190,8 +193,9 @@ model RentPayment {
   paymentDate       DateTime?
   status            PaymentStatus    @default(PENDING)
   source            PaymentSource    @default(MANUAL)
+  // Opération bancaire qui a réglé l'échéance (un virement peut en régler plusieurs)
   bankTransaction   BankTransaction? @relation(fields: [bankTransactionId], references: [id])
-  bankTransactionId String?          @unique
+  bankTransactionId String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -219,16 +223,48 @@ enum TransactionStatus {
   IGNORED
 }
 
+// Compte bancaire d'un utilisateur, alimenté par import de fichier (CSV) ou, plus tard, par un agrégateur
+model BankAccount {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Connexion automatique (Enable Banking) : session de consentement et compte choisi chez la banque
+  bankName         String?
+  ebSessionId      String?
+  ebAccountUid     String?
+  // Libellé du compte à la banque, IBAN masqué (ex. « Compte de dépôt · FR76 …1234 »)
+  remoteLabel      String?
+  consentExpiresAt DateTime?
+  lastSyncAt       DateTime?
+  lastSyncError    String?
+  // Connexion en cours : état envoyé à la banque, puis comptes proposés par la session s'il y en a plusieurs
+  pendingState     String?
+  pendingAccounts  Json?
+
+  transactions BankTransaction[]
+}
+
 model BankTransaction {
   id         String            @id @default(cuid())
-  externalId String            @unique
+  account    BankAccount       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId  String
+  // Identifiant stable de l'opération (empreinte de la ligne pour un import CSV) : évite les doublons
+  externalId String
+  // Positif : crédit (encaissement) ; négatif : débit
   amount     Float
   label      String
   date       DateTime
   status     TransactionStatus @default(UNMATCHED)
   createdAt  DateTime          @default(now())
 
-  rentPayment RentPayment?
+  rentPayments RentPayment[]
+
+  @@unique([accountId, externalId])
+  @@index([accountId, date])
 }
 
 // ─────────────────────────────────────────

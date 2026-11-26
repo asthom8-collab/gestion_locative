@@ -32,6 +32,36 @@ const query = (params: Record<string, string | undefined>) => {
 }
 
 export const api = {
+  bank: {
+    accounts: () => request<T.BankAccount[]>('/bank-accounts'),
+    createAccount: (name: string) => request<T.BankAccount>('/bank-accounts', { method: 'POST', body: JSON.stringify({ name }) }),
+    renameAccount: (id: string, name: string) =>
+      request<T.BankAccount>(`/bank-accounts/${id}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+    deleteAccount: (id: string) => request<void>(`/bank-accounts/${id}`, { method: 'DELETE' }),
+    /** Le relevé CSV part brut dans le corps */
+    importCsv: (accountId: string, file: File) =>
+      request<T.BankImportResult>(`/bank-accounts/${accountId}/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/csv' },
+        body: file,
+      }),
+    banks: () => request<T.BankConnectionBanks>('/bank-connection/banks'),
+    connect: (accountId: string, bankName: string) =>
+      request<{ url: string }>(`/bank-accounts/${accountId}/connect`, { method: 'POST', body: JSON.stringify({ bankName }) }),
+    completeConnection: (accountId: string, returnUrl: string) =>
+      request<T.BankAccount>(`/bank-accounts/${accountId}/connect/complete`, { method: 'POST', body: JSON.stringify({ returnUrl }) }),
+    chooseRemoteAccount: (accountId: string, uid: string) =>
+      request<T.BankAccount>(`/bank-accounts/${accountId}/connect/account`, { method: 'PUT', body: JSON.stringify({ uid }) }),
+    disconnect: (accountId: string) => request<T.BankAccount>(`/bank-accounts/${accountId}/connect`, { method: 'DELETE' }),
+    sync: (accountId: string) => request<T.BankSyncResult>(`/bank-accounts/${accountId}/sync`, { method: 'POST' }),
+    transactions: (filter: T.BankTransactionFilter = {}) =>
+      request<T.BankTransaction[]>(`/bank-transactions${query({ ...filter, year: filter.year?.toString() })}`),
+    match: (id: string, allocations: T.BankAllocation[]) =>
+      request<T.BankTransaction>(`/bank-transactions/${id}/match`, { method: 'POST', body: JSON.stringify({ allocations }) }),
+    unmatch: (id: string) => request<T.BankTransaction>(`/bank-transactions/${id}/match`, { method: 'DELETE' }),
+    setStatus: (id: string, status: 'IGNORED' | 'UNMATCHED') =>
+      request<T.BankTransaction>(`/bank-transactions/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  },
   documents: {
     list: (filter: T.DocumentFilter = {}) => request<T.DocumentItem[]>(`/documents${query({ ...filter })}`),
     /** Le fichier part brut dans le corps, avec son type ; rattachement, type et nom dans l'URL */

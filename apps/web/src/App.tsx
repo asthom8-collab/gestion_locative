@@ -13,6 +13,7 @@ import { Leases } from './pages/Leases'
 import { LeaseDetail } from './pages/LeaseDetail'
 import { Rents } from './pages/Rents'
 import { Payments } from './pages/Payments'
+import { Bank } from './pages/Bank'
 import { Documents } from './pages/Documents'
 import { Charges } from './pages/Charges'
 import { Owners } from './pages/Owners'
@@ -54,6 +55,7 @@ export default function App() {
                 <Route path="/leases/:id" element={<LeaseDetail />} />
                 <Route path="/rents" element={<Rents />} />
                 <Route path="/payments" element={<Payments />} />
+                <Route path="/bank" element={<Bank />} />
                 <Route path="/documents" element={<Documents />} />
                 <Route path="/charges" element={<Charges />} />
                 <Route path="/indices" element={<Indices />} />

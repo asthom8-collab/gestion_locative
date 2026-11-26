@@ -18,6 +18,8 @@ const createSchema = z.object({
   irlReference: z.number().positive().optional(),
   irlQuarter: z.number().int().min(1).max(4).optional(),
   irlYear: z.number().int().min(2000).optional(),
+  // Texte attendu dans le libellé du virement du locataire (rapprochement bancaire) ; null pour l'effacer
+  bankLabel: z.string().trim().max(100).nullable().optional().transform((v) => (v === '' ? null : v)),
 })
 
 const updateSchema = createSchema.omit({ propertyId: true, tenantId: true }).partial()

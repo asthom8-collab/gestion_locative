@@ -118,7 +118,7 @@ export function LeaseDetail() {
 
   const openEdit = (l: LeaseDetailT) => {
     modalErr.clear()
-    setEditing({ type: l.type, rentAmount: l.rentAmount, chargesAmount: l.chargesAmount, rentDayOfMonth: l.rentDayOfMonth, irlReference: l.irlReference ?? undefined, irlQuarter: l.irlQuarter ?? undefined, irlYear: l.irlYear ?? undefined })
+    setEditing({ type: l.type, rentAmount: l.rentAmount, chargesAmount: l.chargesAmount, rentDayOfMonth: l.rentDayOfMonth, irlReference: l.irlReference ?? undefined, irlQuarter: l.irlQuarter ?? undefined, irlYear: l.irlYear ?? undefined, bankLabel: l.bankLabel ?? '' })
   }
   const saveEdit = async () => {
     if (!editing) return
@@ -183,6 +183,7 @@ export function LeaseDetail() {
           <Info label="Fin" value={lease.endDate ? fmtDate(lease.endDate) : '—'} />
           <Info label="Durée" value={durationLabel(lease.startDate, lease.active ? null : lease.endDate)} />
           <Info label="IRL de référence" value={irl} />
+          <Info label="Libellé du virement" value={lease.bankLabel || '—'} />
         </div>
         {lease.active && (
           <div className="mt-5 pt-4 border-t border-slate-100 flex justify-end">
@@ -226,7 +227,11 @@ export function LeaseDetail() {
               <input type="number" className={inputCls} value={editing.irlYear ?? ''} onChange={e => setEditing({ ...editing, irlYear: e.target.value === '' ? undefined : Number(e.target.value) })} />
             </Field>
           </div>
-          <p className="text-xs text-slate-500 -mt-1 mb-3">L'IRL de référence est celui indiqué dans le bail (ou celui de la dernière révision). Les nouveaux montants s'appliquent aux échéances générées ensuite. Celles déjà générées gardent leurs montants.</p>
+          <Field label="Libellé reconnu sur le virement du locataire">
+            <input className={inputCls} value={editing.bankLabel ?? ''} placeholder="Ex. DUPONT LOYER, tel qu'il apparaît sur le relevé"
+              onChange={e => setEditing({ ...editing, bankLabel: e.target.value })} />
+          </Field>
+          <p className="text-xs text-slate-500 -mt-1 mb-3">Le libellé sert au rapprochement bancaire (à défaut, le nom du locataire est cherché dans le libellé). L'IRL de référence est celui indiqué dans le bail (ou celui de la dernière révision). Les nouveaux montants s'appliquent aux échéances générées ensuite. Celles déjà générées gardent leurs montants.</p>
           <div className="flex justify-end"><Button onClick={saveEdit} disabled={updateM.isPending}><Check size={16} />Enregistrer</Button></div>
         </Modal>
       )}

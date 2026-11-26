@@ -90,6 +90,16 @@ middlewares/   validate, errorHandler (AppError → JSON { error }, zod → 400 
 | `POST /api/documents?leaseId\|propertyId&category&fileName[&label]` | Envoi d'un fichier **brut** dans le corps (`Content-Type` = son type), 15 Mo au plus (413). Exactement un rattachement (400). Types acceptés : PDF, JPEG, PNG, WebP, HEIC, Word, Excel, OpenDocument (415 sinon) ; signature binaire vérifiée (400 si le contenu ne correspond pas) |
 | `PATCH /api/documents/:id {label?, category?}`, `DELETE /api/documents/:id` | Renomme ou change le type ; supprime la ligne et le fichier |
 | `GET /api/documents/:id/file[?download]` | Le fichier : affiché (PDF, images courantes) ou téléchargé (autres types, ou `?download`), nom accentué (RFC 6266), `nosniff`, `no-store` |
+| `GET/POST /api/bank-accounts`, `PATCH/DELETE /api/bank-accounts/:id {name}` | Comptes bancaires de l'utilisateur (`transactionCount`, `toMatchCount` = encaissements à rapprocher, `lastTransactionDate`) ; suppression refusée (409) si une opération est rapprochée |
+| `POST /api/bank-accounts/:id/import` | Relevé CSV **brut** dans le corps (5 Mo) : `{imported, duplicates, skipped[{line, reason}], from, to}` ; 422 si le format n'est pas reconnu. Génère au besoin les échéances des mois des encaissements (jusqu'au mois en cours), pour les **baux déjà suivis** seulement et à partir de leur première échéance |
+| `GET /api/bank-connection/banks` | Connexion automatique : `{configured, banks[{name, beta}]}` (France, particuliers) ; `configured: false` sans les variables `ENABLE_BANKING_*` |
+| `POST /api/bank-accounts/:id/connect {bankName}` | Lance l'accord à la banque (Enable Banking) : `{url}` du site de la banque ; consentement de 180 jours au plus |
+| `POST /api/bank-accounts/:id/connect/complete {returnUrl}` | Retour de la banque (adresse recopiée, ou reçue sur `/bank`) : vérifie `state`, ouvre la session ; un seul compte autorisé → relié et synchronisé, sinon `accountChoices` |
+| `PUT /api/bank-accounts/:id/connect/account {uid}`, `DELETE /api/bank-accounts/:id/connect` | Choisit le compte de la banque (puis synchronise) ; déconnecte (session révoquée, opérations gardées) |
+| `POST /api/bank-accounts/:id/sync` | Relève les opérations du compte relié : `{imported, duplicates, from, to, since}` ; erreur gardée dans `lastSyncError` |
+| `GET /api/bank-transactions?accountId&status&direction=credit\|debit&year` | Opérations (récentes d'abord) avec le compte et les échéances rapprochées ; pour un encaissement à rapprocher, `suggestions` (3 au plus : `allocations[{rentPaymentId, amount, payment}]`, `score`, `confidence` high/medium, `reasons`) |
+| `POST /api/bank-transactions/:id/match {allocations[{rentPaymentId, amount}]}`, `DELETE …/:id/match` | Rapproche un encaissement d'une ou plusieurs échéances (total ≤ montant, 400) ; défait le rapprochement (échéances en attente, quittances supprimées) |
+| `PUT /api/bank-transactions/:id/status {status: IGNORED\|UNMATCHED}` | Ignore une opération ou la remet à rapprocher (409 si rapprochée) |
 | `GET /api/leases/:id/revisions`, `GET …/revisions/preview[?date]` | Historique des révisions ; proposition (date, indices, loyer maximum, ce qui manque) |
 | `POST /api/leases/:id/revisions {effectiveDate, newRent?}`, `DELETE …/revisions/:rid` | Applique une révision ; annule la dernière |
 | `GET /api/leases/:id/revisions/:rid/letter[?download]` | Avis de révision PDF (généré à la volée) |
@@ -135,7 +145,9 @@ erDiagram
   Tenant ||--o{ Lease : ""
   Lease ||--o{ RentPayment : "échéances"
   RentPayment ||--o| Receipt : "quittance"
-  BankTransaction |o--o| RentPayment : "rapprochement"
+  User ||--o{ BankAccount : ""
+  BankAccount ||--o{ BankTransaction : ""
+  BankTransaction |o--o{ RentPayment : "rapprochement"
   Property ||--o{ Charge : ""
   Lease ||--o{ ChargeRegularization : ""
   Lease ||--o{ RentRevision : ""
@@ -195,6 +207,7 @@ erDiagram
     float chargesAmount
     int rentDayOfMonth
     float irlReference
+    string bankLabel "libellé attendu sur le virement"
     boolean active
   }
   RentPayment {
@@ -211,6 +224,7 @@ erDiagram
     datetime paymentDate
     PaymentStatus status "PENDING, RECEIVED, PARTIAL (LATE calculé)"
     PaymentSource source "MANUAL, BANK_MATCH"
+    string bankTransactionId FK "opération qui l'a réglée"
   }
   Receipt {
     string id PK
@@ -218,9 +232,15 @@ erDiagram
     string filePath
     datetime sentAt
   }
+  BankAccount {
+    string id PK
+    string userId FK
+    string name
+  }
   BankTransaction {
     string id PK
-    string externalId UK
+    string accountId FK
+    string externalId "unique par compte"
     float amount
     string label
     datetime date
@@ -318,7 +338,7 @@ erDiagram
 | **Lease** | Bail : un seul bail actif par bien | socle | oui |
 | **RentPayment** | Échéance mensuelle et encaissement. Unique par `(leaseId, periodYear, periodMonth)` | 2 | oui |
 | **Receipt** | Quittance PDF d'une échéance payée en entier | 2 | oui |
-| BankTransaction | Opération bancaire importée, rapprochée d'une échéance | 3 | non |
+| BankAccount, BankTransaction | Compte bancaire d'un utilisateur ; opération importée (montant signé : positif = crédit), unique par `(accountId, externalId)`, rapprochée d'une ou plusieurs échéances (`RentPayment.bankTransactionId`) | 3 | oui |
 | Charge, ChargeRegularization | Charges réelles par bien, régularisation annuelle par bail (unique par bail et par année) | 4 | oui |
 | RentRevision | Historique des révisions IRL d'un bail (valeurs avant/après) | 4 | oui |
 | IrlIndex | Indices IRL de l'INSEE, importés chaque jour (ou saisis à la main) | 4, 4 bis | oui |
@@ -404,6 +424,33 @@ Il faudra une migration au moment de faire l'écran concerné :
   téléchargement. La suppression d'un bien (sans bail) supprime ses documents ; un bail ne se supprime pas.
   Exemple en base : `npm run demo:paiements-documents` (bien « Démo paiements » : échéances payées, partielle, en
   retard, et documents fictifs ; `-- --supprimer` pour le retirer). `npm run demo` lance tous les exemples.
+- **Rapprochement bancaire** (`services/bank.ts`, `lib/bankCsv.ts`, `lib/bankMatching.ts`) : l'application **propose**,
+  l'utilisateur **valide** ; rien n'est rapproché d'office.
+  - *Import CSV* : ligne d'en-tête repérée par les noms de colonnes (Date, Libellé…, Montant ou Débit/Crédit), séparateur
+    `;`, tabulation ou `,`, virgule décimale, UTF-8 ou Windows-1252, date d'opération plutôt que de valeur. Identifiant
+    de l'opération = empreinte (date, montant, libellé, rang parmi les lignes identiques du fichier) : réimporter un
+    relevé qui chevauche le précédent ne crée pas de doublon.
+  - *Échéances créées par l'import ou la synchronisation* (`rentPaymentsService.generate(…, { trackedOnly })`) : seulement
+    pour les baux qui ont déjà une échéance, et pour les mois à partir de la première. Un relevé ancien ne fait donc pas
+    apparaître « en retard » des mois jamais suivis ; le suivi d'un bail commence par « Générer le mois » dans Loyers.
+  - *Première connexion à la banque* : elle reprend après la dernière opération du compte ; si le compte en contient
+    déjà, l'écran de choix de la banque le signale et conseille un compte à part si elles viennent d'ailleurs.
+  - *Suggestions* (encaissements seulement, échéances non rapprochées à 75 jours au plus) : montant exact (+50) ou
+    partiel (+10) ; libellé de rapprochement du bail (`Lease.bankLabel`, +45) ou à défaut nom du locataire (+30) dans
+    le libellé ; échéance à 10 jours au plus (+15), loyer très en avance (−10). Virement groupé : 2 ou 3 échéances
+    consécutives d'un bail dont la somme fait le montant. Seuil 40. Confiance « high » (validable en bloc) : montant
+    exact, libellé reconnu et échéance à 10 jours au plus. Un trop-perçu n'est proposé que si `bankLabel` concorde.
+  - *Rapprochement* : chaque échéance reçoit son montant, la date de l'opération, `source = BANK_MATCH` ; RECEIVED ou
+    PARTIAL selon le montant. Un paiement saisi à la main peut être remplacé. Une échéance rapprochée ne se modifie ni ne
+    s'annule depuis Loyers (409) : on défait le rapprochement. La quittance est supprimée si le montant ou la date changent.
+  - *Connexion automatique* (`lib/enableBanking.ts`, `services/bankConnection.ts`) : agrégateur Enable Banking (mode
+    restreint gratuit, comptes reliés dans son portail). Requêtes signées par un JWT RS256 (clé privée hors dépôt,
+    `ENABLE_BANKING_KEY_PATH`). Seules les opérations comptabilisées (`BOOK`) sont gardées ; identifiant
+    `eb:<entry_reference>` (ou empreinte) ; libellé = émetteur ou bénéficiaire + informations de paiement. Première
+    synchronisation : à la suite de la dernière opération du compte (relevé CSV), sinon 90 jours ; ensuite avec
+    10 jours de recouvrement. Relevé automatique 30 s après le démarrage puis toutes les 12 h (`BANK_SYNC=off`),
+    sauf accord expiré. Les identifiants de session ne sortent pas de l'API (`presentAccount`).
+  Exemple en base : `npm run demo:banque` (bien « Démo banque », compte « Démo — compte commun » ; `-- --supprimer`).
 - **Dates** : stockées en UTC à minuit. Les calculs de période se font en UTC des deux côtés.
 
 ### 5.1 Conséquences prévues de la copropriété (phases suivantes)
@@ -443,6 +490,7 @@ src/components/icons.tsx   point d'entrée unique des icônes lucide-react
 | `/leases/:id` | Fiche du bail : conditions, modification, résiliation, échéances et quittances du bail |
 | `/rents?year&month` | Loyers : génération, encaissements, quittances |
 | `/payments` | Paiements : encaissements de l'année (filtre par bien, export CSV), loyers à relancer (retards et partiels) ; lit `GET /api/rent-payments?year` |
+| `/bank` | Synchro bancaire : comptes (import d'un relevé CSV, renommage, suppression, connexion à la banque — `components/bank/BankConnection` : choix de la banque par recherche, adresse de retour à recopier, choix du compte, état, synchronisation, expiration de l'accord), onglets À rapprocher (suggestions à valider, « Tout valider » pour les correspondances sûres, choix manuel des échéances et des montants, Ignorer), Rapprochés (Défaire), Ignorés, Débits |
 | `/documents`, `?property=`, `?lease=` | Documents : tuiles des biens et des baux (en cours, terminés) avec le nombre de documents ; dossier d'un bien ou d'un bail : documents rangés par type, filtre par boutons, ajout rattaché (type choisi par boutons), ouverture, téléchargement, renommage, suppression ; dans un bien, tuiles de ses baux. Lien « Documents » sur chaque bien, bloc « Documents du bail » sur la fiche du bail |
 | `/charges?year` | Charges récupérables par bien, par année ou par trimestre, répartition entre propriétaires successifs, liens vers la régularisation de chaque bail |
 | `/notifications` | Notifications (rappels de révision), avec le bloc « Prochains rappels » et le bouton « Vérifier maintenant » ; cloche avec le nombre de non lues dans la barre latérale et l'en-tête mobile |

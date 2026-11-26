@@ -31,10 +31,18 @@ export const rentPaymentsService = {
     return payments.map((p) => present(p))
   },
 
-  /** Crée les échéances manquantes du mois pour les baux de l'utilisateur qui le couvrent (idempotent). */
-  async generate(userId: string, year: number, month: number) {
+  /**
+   * Crée les échéances manquantes du mois pour les baux de l'utilisateur qui le couvrent (idempotent).
+   * Avec `trackedOnly` (import bancaire), seulement pour les baux déjà suivis, à partir de leur première échéance :
+   * un relevé ancien ne fait pas apparaître en retard des mois qui n'ont jamais été suivis dans l'application.
+   */
+  async generate(userId: string, year: number, month: number, { trackedOnly = false } = {}) {
     const { start, end } = monthBounds(year, month)
-    const leases = await rentPaymentsRepository.findLeasesCovering(start, end, userId)
+    let leases = await rentPaymentsRepository.findLeasesCovering(start, end, userId)
+    if (trackedOnly) {
+      const first = await rentPaymentsRepository.firstPeriods(leases.map((l) => l.id))
+      leases = leases.filter((l) => (first.get(l.id) ?? Infinity) <= year * 12 + month)
+    }
     const rows = leases.flatMap((lease) => {
       const due = computeMonthlyDue(lease, year, month)
       return due ? [{ leaseId: lease.id, periodYear: year, periodMonth: month, ...due }] : []
@@ -46,6 +54,9 @@ export const rentPaymentsService = {
   /** Enregistre le montant total reçu pour l'échéance (remplace la saisie précédente). */
   async recordPayment(id: string, userId: string, receivedAmount: number, paymentDate: Date) {
     const payment = await getOrThrow(id, userId)
+    if (payment.bankTransactionId) {
+      throw new AppError(409, 'Ce paiement vient du rapprochement bancaire : défaites le rapprochement pour le modifier')
+    }
     const amount = round2(receivedAmount)
     const status: PaymentStatus = amount >= payment.expectedAmount ? 'RECEIVED' : 'PARTIAL'
     // Une quittance existante ne correspond plus au paiement saisi

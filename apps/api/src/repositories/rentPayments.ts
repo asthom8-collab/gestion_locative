@@ -59,6 +59,17 @@ export const rentPaymentsRepository = {
     })
   },
 
+  /** Première échéance (année, mois) de chacun des baux donnés, pour savoir depuis quand ils sont suivis. */
+  async firstPeriods(leaseIds: string[]) {
+    const rows = await prisma.rentPayment.findMany({
+      where: { leaseId: { in: leaseIds } },
+      select: { leaseId: true, periodYear: true, periodMonth: true },
+      orderBy: [{ periodYear: 'asc' }, { periodMonth: 'asc' }],
+      distinct: ['leaseId'],
+    })
+    return new Map(rows.map((r) => [r.leaseId, r.periodYear * 12 + r.periodMonth]))
+  },
+
   createMany(data: Prisma.RentPaymentCreateManyInput[]) {
     return prisma.rentPayment.createMany({ data, skipDuplicates: true })
   },
