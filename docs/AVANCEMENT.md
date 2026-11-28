@@ -4,13 +4,20 @@
 > Détails des phases livrées et journal : [HISTORIQUE.md](HISTORIQUE.md) (à consulter au besoin, à compléter en fin de session).
 > Description technique (API, modèle de données, règles métier, tests) : [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## ▶ Reprise — état au 2026-11-26 : phase 3 fusionnée dans `main` ; plan de la suite proposé (PLAN-SUITE.md)
+## ▶ Reprise — état au 2026-11-28 : Interventions (étape 1 du plan) livrées ; en cours : Impôts (étape 2)
 
 ### Où en est le code
 - `main` (= `origin/main`) : phases 2, 3 (rapprochement, fusionnée le 2026-11-26 en un seul commit, branche supprimée),
-  4, 4 bis, Paiements, Documents. Détail : HISTORIQUE.md. `npm run verify` : 144 tests API, 94 tests front.
-  Migrations `20261125090000_rapprochement_bancaire` et `20261125220000_connexion_bancaire` à appliquer
-  (`npx prisma migrate deploy`) sur toute autre base (conteneurs compris).
+  4, 4 bis, Paiements, Documents. **Interventions** (2026-11-28, testées par Thomas). Détail : HISTORIQUE.md. `npm run verify` : 155 tests API, 100 tests front.
+  Migrations `20261125090000_rapprochement_bancaire`, `20261125220000_connexion_bancaire` et `20261128073312_interventions`
+  à appliquer (`npx prisma migrate deploy`) sur toute autre base (conteneurs compris : `api` et `web` redémarrent en boucle le 2026-11-28).
+
+### Interventions (2026-11-28)
+Page `/interventions` (menu Gestion), bloc sur la fiche du bail, lien sur chaque bien ; factures et devis joints (nouvelle
+catégorie « Devis ») ; traitement fiscal calculé selon le régime du bien (règles : ARCHITECTURE.md § 5). Démo :
+`npm run demo:interventions` (lancé sur la base de dev). Testées par Thomas, poussées.
+- Règles de classement et simplifications à reprendre à l'étape Impôts : référentiel **Règles fiscales des travaux**
+  (`/tax-rules`, menu Référentiels), à tenir à jour avec `lib/interventionTax.ts`. Local commercial pris en compte.
 
 ### Phase 3 : choix de Thomas (2026-11-25)
 Import de fichier **et** connexion automatique ; banque en **CSV seulement** ; **un compte commun** ; l'application
@@ -48,7 +55,7 @@ propose, Thomas valide (partiel = paiement partiel ; virement groupé réparti s
 
 ### Prochaines étapes, dans l'ordre
 Plan détaillé proposé le 2026-11-26 : **[PLAN-SUITE.md](PLAN-SUITE.md)** (à valider avec Thomas, questions en fin de fichier).
-1. Interventions (travaux faits soi-même ou par un professionnel, nature fiscale) → 2. Impôts location nue et
+1. ~~Interventions~~ (livrées) → 2. Impôts location nue et
    micro-BIC (2042 / 2044 / 2042-C-PRO) → 3. LMNP au réel (amortissements, liasse 2031 / 2033) → 4. Mise en ligne
    (VPS chez un hébergeur français, HTTPS, durcissement, sauvegardes) → 5. États des lieux (PDF, validation par les deux parties).
 - Banque principale de Thomas : **pas de connexion** pour l'instant (données sensibles, à voir à la fin, une fois hébergé).
@@ -75,6 +82,8 @@ Sur une autre base : `npx prisma migrate deploy` dans `apps/api`.
 - Purge des anciens commits sur GitHub (`5424658`, `44e1a9c`) : demande au support GitHub si Thomas le souhaite.
 
 ### Points d'attention
+- **Avant la mise en ligne** : changer le mot de passe (faible, de dev) du compte de Thomas, communiqué en clair à Claude le
+  2026-11-28, et purger les transcriptions de session qui le contiennent.
 - Dev (API 3002) et conteneurs partagent la **base** mais pas les **fichiers** (`apps/api/storage` contre le volume
   `app_storage`) : un document ou une quittance créé d'un côté s'ouvre en 404 de l'autre. Copie au besoin :
   `docker compose cp apps/api/storage/documents api:/app/storage/`.

@@ -130,4 +130,27 @@ describe('contrat API ↔ front', () => {
     const [u] = (await api().get('/api/notifications/upcoming').expect(200)).body
     expect(keys(u)).toEqual(['anniversary', 'daysLeft', 'leaseId', 'propertyName', 'remindOn', 'sentAt', 'status', 'tenantName'])
   })
+
+  it('interventions : champs lus par la page Interventions et la fiche du bail (types Intervention*)', async () => {
+    const p = await createProperty()
+    const l = await createLease(p.id, (await createTenant()).id)
+    const created = (await api().post('/api/interventions').send({
+      propertyId: p.id, leaseId: l.id, title: 'Fuite', kind: 'PLUMBING', date: '2026-03-12T00:00:00.000Z', cost: 100,
+    }).expect(201)).body
+    await api().post(`/api/documents?interventionId=${created.id}&category=INVOICE&fileName=f.pdf`)
+      .set('Content-Type', 'application/pdf').send(Buffer.from('%PDF-1.4')).expect(201)
+    const list = (await api().get('/api/interventions').expect(200)).body
+    expect(keys(list)).toEqual(['items', 'totals', 'years'])
+    expect(keys(list.totals)).toEqual(['deductible', 'depreciable', 'ownerCost', 'planned'])
+    const [i] = list.items
+    expect(keys(i)).toEqual(expect.arrayContaining(['id', 'propertyId', 'leaseId', 'title', 'kind', 'date', 'status', 'doneBy',
+      'providerName', 'cost', 'paidBy', 'fiscalNature', 'notes', 'property', 'lease', 'documents', 'tax']))
+    expect(i.providerName).toBeNull()
+    expect(keys(i.property)).toEqual(['fiscalRegime', 'id', 'name', 'type'])
+    expect(keys(i.lease.tenant)).toEqual(['firstName', 'id', 'lastName'])
+    expect(keys(i.documents[0])).toEqual(['category', 'id', 'label', 'mimeType'])
+    expect(keys(i.tax)).toEqual(['amount', 'code', 'label'])
+    const [doc] = (await api().get('/api/documents').expect(200)).body
+    expect(keys(doc.intervention)).toEqual(['date', 'id', 'title'])
+  })
 })

@@ -48,6 +48,7 @@ export type UploadInput = {
   userId: string
   leaseId?: string
   propertyId?: string
+  interventionId?: string
   category: DocumentCategory
   label?: string
   fileName: string
@@ -60,7 +61,13 @@ export const documentsService = {
     return (await documentsRepository.findMany(filter)).map(present)
   },
 
-  async upload({ userId, leaseId, propertyId, category, label, fileName, mimeType, content }: UploadInput) {
+  async upload({ userId, leaseId, propertyId, interventionId, category, label, fileName, mimeType, content }: UploadInput) {
+    if (interventionId) {
+      if (leaseId || propertyId) throw new AppError(400, 'Un document d’intervention est rattaché au bien de l’intervention')
+      const intervention = await documentsRepository.findIntervention(interventionId, userId)
+      if (!intervention) throw new AppError(404, 'Intervention introuvable')
+      propertyId = intervention.propertyId
+    }
     if (!leaseId === !propertyId) throw new AppError(400, 'Rattachez le document à un bail ou à un bien (l’un des deux)')
     if (leaseId && !(await documentsRepository.leaseExists(leaseId, userId))) throw new AppError(404, 'Bail introuvable')
     if (propertyId && !(await documentsRepository.propertyExists(propertyId, userId))) throw new AppError(404, 'Bien introuvable')
@@ -76,7 +83,7 @@ export const documentsService = {
     try {
       return present(await documentsRepository.create({
         label: label?.trim() || name, fileName: name, filePath, mimeType, size: content.length, category,
-        leaseId: leaseId ?? null, propertyId: propertyId ?? null,
+        leaseId: leaseId ?? null, propertyId: propertyId ?? null, interventionId: interventionId ?? null,
       }))
     } catch (err) {
       await removeFile(filePath)

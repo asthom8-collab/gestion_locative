@@ -8,7 +8,7 @@
 
 | # | Étape | Pourquoi à ce moment | Taille |
 |---|---|---|---|
-| 1 | **Interventions** (travaux) | Petit écran, et il alimente les impôts (travaux déductibles, amortissements) | 1 session |
+| 1 | **Interventions** (travaux) — faites le 2026-11-28 | Petit écran, et il alimente les impôts (travaux déductibles, amortissements) | 1 session |
 | 2 | **Impôts : location nue et micro-BIC** | Aide à la saisie de la 2042 / 2044 / 2042-C-PRO à partir des loyers, charges et travaux | 1 à 2 sessions |
 | 3 | **Impôts : LMNP au réel** (si un bien est concerné) | Amortissements et liasse 2031 / 2033 : le plus technique | 2 sessions ou plus |
 | 4 | **Mise en ligne** (hébergement, HTTPS, durcissement) | Prérequis à la signature à distance des états des lieux et au retour https de la banque | 1 à 2 sessions |

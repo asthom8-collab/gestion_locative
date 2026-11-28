@@ -10,11 +10,13 @@ import { MAX_DOCUMENT_BYTES, documentsService } from '../services/documents'
 const router = Router()
 
 const category = z.nativeEnum(DocumentCategory)
-const listSchema = z.object({ leaseId: z.string().optional(), propertyId: z.string().optional(), category: category.optional() })
+const listSchema = z.object({ leaseId: z.string().optional(), propertyId: z.string().optional(), interventionId: z.string().optional(), category: category.optional() })
 // Le fichier est envoyé brut dans le corps (Content-Type : son type) ; les métadonnées passent dans l'URL
 const uploadSchema = z.object({
   leaseId: z.string().min(1).optional(),
   propertyId: z.string().min(1).optional(),
+  // Facture ou devis d'une intervention : rattaché aussi à son bien
+  interventionId: z.string().min(1).optional(),
   category,
   fileName: z.string().min(1).max(255),
   label: z.string().max(200).optional(),

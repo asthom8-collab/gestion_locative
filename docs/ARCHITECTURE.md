@@ -86,10 +86,12 @@ middlewares/   validate, errorHandler (AppError → JSON { error }, zod → 400 
 | `GET /api/notifications/upcoming` | Prochains rappels de l'utilisateur : par bail actif, anniversaire, date d'envoi (`remindOn` = anniversaire − délai), état (`planned`, `sent`, `past`, `not_owner`) |
 | `POST /api/notifications/check` | Lance tout de suite la recherche des rappels (tous les baux, idempotent) ; renvoie `{ created, upcoming }` |
 | `POST /api/notifications/test` | Message d'essai sur tous les canaux ; résultat par canal (`sent`, `disabled`, `not_configured`, `{error}`) |
-| `GET /api/documents?leaseId&propertyId&category` | Documents visibles (bail ou bien de l'utilisateur), du plus récent au plus ancien ; avec `propertyId`, ceux du bien **et** de ses baux. Avec `property` et `lease` (bien, locataire), sans le chemin sur le disque |
-| `POST /api/documents?leaseId\|propertyId&category&fileName[&label]` | Envoi d'un fichier **brut** dans le corps (`Content-Type` = son type), 15 Mo au plus (413). Exactement un rattachement (400). Types acceptés : PDF, JPEG, PNG, WebP, HEIC, Word, Excel, OpenDocument (415 sinon) ; signature binaire vérifiée (400 si le contenu ne correspond pas) |
+| `GET /api/documents?leaseId&propertyId&interventionId&category` | Documents visibles (bail ou bien de l'utilisateur), du plus récent au plus ancien ; avec `propertyId`, ceux du bien **et** de ses baux. Avec `property`, `lease` (bien, locataire) et `intervention` (`id`, `title`, `date`), sans le chemin sur le disque |
+| `POST /api/documents?leaseId\|propertyId\|interventionId&category&fileName[&label]` | Envoi d'un fichier **brut** dans le corps (`Content-Type` = son type), 15 Mo au plus (413). Exactement un rattachement (400) ; avec `interventionId` (facture, devis), le document est rattaché au bien de l'intervention. Types acceptés : PDF, JPEG, PNG, WebP, HEIC, Word, Excel, OpenDocument (415 sinon) ; signature binaire vérifiée (400 si le contenu ne correspond pas) |
 | `PATCH /api/documents/:id {label?, category?}`, `DELETE /api/documents/:id` | Renomme ou change le type ; supprime la ligne et le fichier |
 | `GET /api/documents/:id/file[?download]` | Le fichier : affiché (PDF, images courantes) ou téléchargé (autres types, ou `?download`), nom accentué (RFC 6266), `nosniff`, `no-store` |
+| `GET /api/interventions?propertyId&leaseId&kind&year` | Interventions (travaux) des biens de l'utilisateur, récentes d'abord : `{items, totals{ownerCost, deductible, depreciable, planned}, years}`. Chaque intervention avec `property` (`fiscalRegime`), `lease.tenant`, `documents` (factures, devis) et `tax{code, label, amount}` (§ 5) |
+| `POST /api/interventions`, `GET/PATCH/DELETE /api/interventions/:id` | Création `{propertyId, leaseId?, title, kind, date, status?, doneBy?, providerName?, cost, paidBy?, fiscalNature?, notes?}` (bail d'un autre bien : 400), lecture, modification (le bien ne change pas), suppression (les factures restent dans les documents du bien) |
 | `GET/POST /api/bank-accounts`, `PATCH/DELETE /api/bank-accounts/:id {name}` | Comptes bancaires de l'utilisateur (`transactionCount`, `toMatchCount` = encaissements à rapprocher, `lastTransactionDate`) ; suppression refusée (409) si une opération est rapprochée |
 | `POST /api/bank-accounts/:id/import` | Relevé CSV **brut** dans le corps (5 Mo) : `{imported, duplicates, skipped[{line, reason}], from, to}` ; 422 si le format n'est pas reconnu. Génère au besoin les échéances des mois des encaissements (jusqu'au mois en cours), pour les **baux déjà suivis** seulement et à partir de leur première échéance |
 | `GET /api/bank-connection/banks` | Connexion automatique : `{configured, banks[{name, beta}]}` (France, particuliers) ; `configured: false` sans les variables `ENABLE_BANKING_*` |
@@ -155,6 +157,9 @@ erDiagram
   Lease ||--o{ Document : ""
   Property ||--o{ Document : ""
   Tenant ||--o{ Document : ""
+  Property ||--o{ Intervention : "travaux"
+  Lease |o--o{ Intervention : ""
+  Intervention |o--o{ Document : "factures, devis"
   Lease ||--o{ Inventory : "états des lieux"
   Inventory ||--o{ InventoryRoom : ""
   InventoryRoom ||--o{ InventoryElement : ""
@@ -304,6 +309,19 @@ erDiagram
     DocumentCategory category
     string leaseId FK "ou propertyId"
     string propertyId FK
+    string interventionId FK
+  }
+  Intervention {
+    string propertyId FK
+    string leaseId FK "facultatif"
+    string title
+    InterventionKind kind
+    datetime date
+    InterventionStatus status "PLANNED, DONE"
+    InterventionDoneBy doneBy "OWNER, PROFESSIONAL"
+    float cost
+    InterventionPayer paidBy "OWNER, TENANT, INSURANCE"
+    InterventionNature fiscalNature "MAINTENANCE, IMPROVEMENT, CONSTRUCTION"
   }
   Inventory {
     string leaseId FK
@@ -345,6 +363,7 @@ erDiagram
 | Notification | Notification d'un propriétaire (rappel de révision, régularisation à refaire, essai) ; unique par `(userId, kind, leaseId, dueDate)` | 4 bis | oui |
 | LmnpEntry | Écritures comptables LMNP | 5 | non |
 | Document | Fichiers rattachés à un bail **ou** à un bien (contrainte `Document_owner_check`), dans `storage/documents/` ; `tenantId` prévu pour le dossier locataire, pas encore utilisé | US-04 | oui |
+| Intervention | Travaux d'un bien (bail facultatif) : type, état, réalisée par, payée par, nature fiscale ; supprimée avec le bien (cascade), bail détaché s'il disparaît ; factures et devis dans `Document.interventionId` (gardés, lien retiré, si l'intervention est supprimée) | interventions | oui |
 | Inventory, InventoryRoom, InventoryElement, InventoryPhoto | États des lieux d'entrée et de sortie | US-22 à 25 | non |
 
 ### 4.3 Écarts connus avec la maquette du front
@@ -451,6 +470,18 @@ Il faudra une migration au moment de faire l'écran concerné :
     10 jours de recouvrement. Relevé automatique 30 s après le démarrage puis toutes les 12 h (`BANK_SYNC=off`),
     sauf accord expiré. Les identifiants de session ne sortent pas de l'API (`presentAccount`).
   Exemple en base : `npm run demo:banque` (bien « Démo banque », compte « Démo — compte commun » ; `-- --supprimer`).
+- **Interventions** (`lib/interventionTax.ts`) : traitement fiscal calculé à la lecture selon `Property.fiscalRegime` et
+  `fiscalNature`. Prévue, ou payée par le locataire ou l'assurance : rien (`NONE`). Location nue et Pinel : entretien,
+  réparation et amélioration déductibles (`DEDUCTIBLE`), construction / agrandissement non (`NOT_DEDUCTIBLE`), ni
+  l'amélioration d'un **local commercial** (`Property.type = COMMERCIAL`, CGI art. 31 I-1° b bis ; exception amiante /
+  accessibilité non gérée) ; `NU`
+  est traité comme le réel tant que micro-foncier / réel n'est pas saisi par bien. LMNP réel : entretien en charges,
+  amélioration et construction à immobiliser (`DEPRECIABLE`). Micro-BIC : rien. Faite soi-même : le coût saisi est celui
+  des matériaux (main-d'œuvre du propriétaire jamais déductible, BOI-RFPI-BASE-20-30-30). Totaux de la liste :
+  dépenses faites à la charge du propriétaire, déductible, à amortir, prévues.
+  Ces règles, leurs cas particuliers, les simplifications à reprendre et les sources sont présentés dans l'application
+  (référentiel `/tax-rules`, `pages/TaxRules.tsx`) : **à tenir à jour en même temps que `lib/interventionTax.ts`**.
+  Exemple en base : `npm run demo:interventions` (bien « Démo interventions LMNP » et interventions sur les autres biens de démo).
 - **Dates** : stockées en UTC à minuit. Les calculs de période se font en UTC des deux côtés.
 
 ### 5.1 Conséquences prévues de la copropriété (phases suivantes)
@@ -492,6 +523,8 @@ src/components/icons.tsx   point d'entrée unique des icônes lucide-react
 | `/payments` | Paiements : encaissements de l'année (filtre par bien, export CSV), loyers à relancer (retards et partiels) ; lit `GET /api/rent-payments?year` |
 | `/bank` | Synchro bancaire : comptes (import d'un relevé CSV, renommage, suppression, connexion à la banque — `components/bank/BankConnection` : choix de la banque par recherche, adresse de retour à recopier, choix du compte, état, synchronisation, expiration de l'accord), onglets À rapprocher (suggestions à valider, « Tout valider » pour les correspondances sûres, choix manuel des échéances et des montants, Ignorer), Rapprochés (Défaire), Ignorés, Débits |
 | `/documents`, `?property=`, `?lease=` | Documents : tuiles des biens et des baux (en cours, terminés) avec le nombre de documents ; dossier d'un bien ou d'un bail : documents rangés par type, filtre par boutons, ajout rattaché (type choisi par boutons), ouverture, téléchargement, renommage, suppression ; dans un bien, tuiles de ses baux. Lien « Documents » sur chaque bien, bloc « Documents du bail » sur la fiche du bail |
+| `/interventions?property&kind&year` | Interventions : filtres (bien, type, année), totaux, liste avec traitement fiscal, factures et devis (ajout rattaché), fenêtre de saisie (`components/interventions/InterventionModal` : bail en cours proposé selon la date, aide sur la nature fiscale et les travaux faits soi-même). Lien « Interventions » sur chaque bien, bloc « Interventions pendant le bail » sur la fiche du bail |
+| `/tax-rules` | Référentiel « Règles fiscales des travaux » : natures (mêmes textes que l'aide du formulaire), tableau régime × nature, cas particuliers, simplifications à reprendre, sources et date de relecture |
 | `/charges?year` | Charges récupérables par bien, par année ou par trimestre, répartition entre propriétaires successifs, liens vers la régularisation de chaque bail |
 | `/notifications` | Notifications (rappels de révision), avec le bloc « Prochains rappels » et le bouton « Vérifier maintenant » ; cloche avec le nombre de non lues dans la barre latérale et l'en-tête mobile |
 | `/settings` | Paramètres : identité et adresse, signature, mot de passe, notifications (délai, e-mail, ntfy, SMS Free Mobile, essai), comptes et rôles (administrateur) |
@@ -505,7 +538,7 @@ Toutes les erreurs de l'API (400, 404, 409) s'affichent à l'écran (`ErrorAlert
 action de liste, dans la fenêtre pour un formulaire (qui reste alors ouvert).
 
 Le menu (`components/layout/nav.ts`) suit les groupes de la maquette : Tableau de bord / Patrimoine / Finances
-(puis Gestion). Les écrans des phases suivantes y seront ajoutés au fur et à mesure.
+(puis Gestion : Interventions, Documents). Les écrans des phases suivantes y seront ajoutés au fur et à mesure.
 
 ## 7. Stratégie de tests
 

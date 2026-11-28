@@ -162,6 +162,15 @@ colocation (pas dans le schéma, voir ARCHITECTURE.md § 4.3). Le dossier locata
 
 ## Journal
 
+### 2026-11-28
+- **Interventions** (étape 1 de PLAN-SUITE.md) : modèle `Intervention` (migration `20261128073312_interventions`), catégorie
+  de document `QUOTE` et lien `Document.interventionId` ; API `/api/interventions` (filtres bien, bail, type, année ; totaux) ;
+  traitement fiscal par régime (`lib/interventionTax.ts`) ; page Interventions, bloc sur la fiche du bail, lien sur les biens ;
+  démo `npm run demo:interventions`. Règle vérifiée sur le BOFiP (BOI-RFPI-BASE-20-30-30) : travaux faits soi-même,
+  seuls les matériaux sur facture sont déductibles.
+- Puis, à la demande de Thomas : amélioration d'un local commercial non déductible en location nue ; référentiel
+  « Règles fiscales des travaux » (`/tax-rules`) pour capitaliser les règles, cas particuliers, limites et sources.
+
 ### 2026-11-25
 - Phase 3 démarrée, choix de Thomas : import de fichier **et** connexion automatique ; banque exportant en **CSV
   seulement** ; **un compte commun** ; l'application **propose** et Thomas **valide** (partiel = paiement partiel,

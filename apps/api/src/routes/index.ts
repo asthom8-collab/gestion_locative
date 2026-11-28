@@ -11,6 +11,7 @@ import chargesRouter from './charges'
 import leaseDocumentsRouter from './leaseDocuments'
 import notificationsRouter from './notifications'
 import documentsRouter from './documents'
+import interventionsRouter from './interventions'
 import { bankAccountsRouter, bankConnectionRouter, bankTransactionsRouter } from './bank'
 import { requireAuth } from '../middlewares/auth'
 
@@ -31,6 +32,7 @@ router.use('/irl', irlRouter)
 router.use('/charges', chargesRouter)
 router.use('/notifications', notificationsRouter)
 router.use('/documents', documentsRouter)
+router.use('/interventions', interventionsRouter)
 router.use('/bank-accounts', bankAccountsRouter)
 router.use('/bank-transactions', bankTransactionsRouter)
 router.use('/bank-connection', bankConnectionRouter)

@@ -76,6 +76,14 @@ export const api = {
     delete: (id: string) => request<void>(`/documents/${id}`, { method: 'DELETE' }),
     fileUrl: (id: string, download = false) => `${BASE}/documents/${id}/file${download ? '?download' : ''}`,
   },
+  interventions: {
+    list: (filter: T.InterventionFilter = {}) =>
+      request<T.InterventionList>(`/interventions${query({ ...filter, year: filter.year?.toString() })}`),
+    create: (data: T.InterventionInput) => request<T.Intervention>('/interventions', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Omit<T.InterventionInput, 'propertyId'>>) =>
+      request<T.Intervention>(`/interventions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: string) => request<void>(`/interventions/${id}`, { method: 'DELETE' }),
+  },
   irl: {
     list: () => request<T.IrlIndex[]>('/irl'),
     save: (data: { quarter: number; year: number; value: number }) =>

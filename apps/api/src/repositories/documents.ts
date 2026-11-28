@@ -11,6 +11,7 @@ const visible = (userId: string): Prisma.DocumentWhereInput => ({
 
 const include = {
   property: { select: { id: true, name: true } },
+  intervention: { select: { id: true, title: true, date: true } },
   lease: {
     select: {
       id: true, startDate: true, endDate: true, active: true,
@@ -22,14 +23,15 @@ const include = {
 
 export type DocumentWithLinks = Prisma.DocumentGetPayload<{ include: typeof include }>
 
-export type DocumentFilter = { userId: string; leaseId?: string; propertyId?: string; category?: DocumentCategory }
+export type DocumentFilter = { userId: string; leaseId?: string; propertyId?: string; interventionId?: string; category?: DocumentCategory }
 
 export const documentsRepository = {
   /** Avec propertyId : les documents du bien et ceux de ses baux. */
-  findMany({ userId, leaseId, propertyId, category }: DocumentFilter) {
+  findMany({ userId, leaseId, propertyId, interventionId, category }: DocumentFilter) {
     const and: Prisma.DocumentWhereInput[] = [visible(userId)]
     if (leaseId) and.push({ leaseId })
     if (propertyId) and.push({ OR: [{ propertyId }, { lease: { propertyId } }] })
+    if (interventionId) and.push({ interventionId })
     if (category) and.push({ category })
     return prisma.document.findMany({ where: { AND: and }, include, orderBy: { createdAt: 'desc' } })
   },
@@ -40,6 +42,10 @@ export const documentsRepository = {
 
   leaseExists(id: string, userId: string) {
     return prisma.lease.count({ where: { id, ...ownedLease(userId) } }).then((n) => n > 0)
+  },
+
+  findIntervention(id: string, userId: string) {
+    return prisma.intervention.findFirst({ where: { id, property: ownedProperty(userId) }, select: { propertyId: true } })
   },
 
   propertyExists(id: string, userId: string) {

@@ -306,7 +306,7 @@ export interface OutdatedRegularization {
 
 export type DocumentCategory =
   | 'LEASE_CONTRACT' | 'INVENTORY_ENTRY' | 'INVENTORY_EXIT' | 'INSURANCE' | 'PHOTO'
-  | 'DIAGNOSTIC' | 'TITLE_DEED' | 'PROPERTY_TAX' | 'INVOICE' | 'OTHER'
+  | 'DIAGNOSTIC' | 'TITLE_DEED' | 'PROPERTY_TAX' | 'INVOICE' | 'QUOTE' | 'OTHER'
 
 /** Document envoyé, rattaché à un bail (leaseId) ou à un bien (propertyId) */
 export interface DocumentItem {
@@ -319,7 +319,9 @@ export interface DocumentItem {
   leaseId: string | null
   propertyId: string | null
   createdAt: string
+  interventionId?: string | null
   property: { id: string; name: string } | null
+  intervention?: { id: string; title: string; date: string } | null
   lease: {
     id: string; startDate: string; endDate: string | null; active: boolean
     property: { id: string; name: string }
@@ -327,8 +329,63 @@ export interface DocumentItem {
   } | null
 }
 
-export interface DocumentFilter { leaseId?: string; propertyId?: string; category?: DocumentCategory }
-export type DocumentTarget = { leaseId: string } | { propertyId: string }
+export interface DocumentFilter { leaseId?: string; propertyId?: string; interventionId?: string; category?: DocumentCategory }
+export type DocumentTarget = { leaseId: string } | { propertyId: string } | { interventionId: string }
+
+// ── Interventions (travaux) ──
+
+export type InterventionKind =
+  | 'PLUMBING' | 'ELECTRICITY' | 'HEATING' | 'PAINTING' | 'CARPENTRY' | 'LOCKSMITH'
+  | 'CLEANING' | 'RENOVATION' | 'DAMAGE' | 'GARDENING' | 'OTHER'
+export type InterventionStatus = 'PLANNED' | 'DONE'
+export type InterventionDoneBy = 'OWNER' | 'PROFESSIONAL'
+export type InterventionPayer = 'OWNER' | 'TENANT' | 'INSURANCE'
+export type InterventionNature = 'MAINTENANCE' | 'IMPROVEMENT' | 'CONSTRUCTION'
+/** Traitement aux impôts calculé par l'API selon le régime du bien */
+export interface InterventionTax { code: 'DEDUCTIBLE' | 'NOT_DEDUCTIBLE' | 'DEPRECIABLE' | 'NONE'; label: string; amount: number }
+
+export interface Intervention {
+  id: string
+  propertyId: string
+  leaseId: string | null
+  title: string
+  kind: InterventionKind
+  date: string
+  status: InterventionStatus
+  doneBy: InterventionDoneBy
+  providerName: string | null
+  cost: number
+  paidBy: InterventionPayer
+  fiscalNature: InterventionNature
+  notes: string | null
+  property: { id: string; name: string; type: PropertyType; fiscalRegime: FiscalRegime }
+  lease: { id: string; tenant: { id: string; firstName: string; lastName: string } } | null
+  documents: { id: string; label: string; category: DocumentCategory; mimeType: string }[]
+  tax: InterventionTax
+}
+
+export interface InterventionList {
+  items: Intervention[]
+  totals: { ownerCost: number; deductible: number; depreciable: number; planned: number }
+  years: number[]
+}
+
+export interface InterventionFilter { propertyId?: string; leaseId?: string; kind?: InterventionKind; year?: number }
+
+export type InterventionInput = {
+  propertyId: string
+  leaseId: string | null
+  title: string
+  kind: InterventionKind
+  date: string
+  status: InterventionStatus
+  doneBy: InterventionDoneBy
+  providerName: string | null
+  cost: number
+  paidBy: InterventionPayer
+  fiscalNature: InterventionNature
+  notes: string | null
+}
 
 // ── Rapprochement bancaire ──
 

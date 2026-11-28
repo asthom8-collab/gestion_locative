@@ -80,11 +80,12 @@ model Property {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
-  ownerships  Ownership[]
-  leases      Lease[]
-  charges     Charge[]
-  lmnpEntries LmnpEntry[]
-  documents   Document[]
+  ownerships    Ownership[]
+  leases        Lease[]
+  charges       Charge[]
+  lmnpEntries   LmnpEntry[]
+  documents     Document[]
+  interventions Intervention[]
 }
 
 model Ownership {
@@ -158,6 +159,7 @@ model Lease {
   rentRevisions         RentRevision[]
   documents             Document[]
   inventories           Inventory[]
+  interventions         Intervention[]
 }
 
 // ─────────────────────────────────────────
@@ -381,28 +383,101 @@ enum DocumentCategory {
   TITLE_DEED // titre de propriété
   PROPERTY_TAX // taxe foncière
   INVOICE // facture (travaux, entretien)
+  QUOTE // devis
   OTHER
 }
 
 // Fichier envoyé par un propriétaire, rattaché soit à un bail, soit à un bien (exactement l'un des deux)
 model Document {
-  id         String           @id @default(cuid())
-  label      String // nom affiché (par défaut le nom du fichier)
-  fileName   String // nom du fichier d'origine, pour le téléchargement
-  filePath   String // chemin relatif à STORAGE_PATH
-  mimeType   String
-  size       Int
-  category   DocumentCategory
-  leaseId    String?
-  lease      Lease?           @relation(fields: [leaseId], references: [id])
-  propertyId String?
-  property   Property?        @relation(fields: [propertyId], references: [id])
-  tenantId   String?
-  tenant     Tenant?          @relation(fields: [tenantId], references: [id])
-  createdAt  DateTime         @default(now())
+  id             String           @id @default(cuid())
+  label          String // nom affiché (par défaut le nom du fichier)
+  fileName       String // nom du fichier d'origine, pour le téléchargement
+  filePath       String // chemin relatif à STORAGE_PATH
+  mimeType       String
+  size           Int
+  category       DocumentCategory
+  leaseId        String?
+  lease          Lease?           @relation(fields: [leaseId], references: [id])
+  propertyId     String?
+  property       Property?        @relation(fields: [propertyId], references: [id])
+  tenantId       String?
+  tenant         Tenant?          @relation(fields: [tenantId], references: [id])
+  // Facture ou devis d'une intervention (le document est alors aussi rattaché à son bien) ; gardé si l'intervention est supprimée
+  interventionId String?
+  intervention   Intervention?    @relation(fields: [interventionId], references: [id], onDelete: SetNull)
+  createdAt      DateTime         @default(now())
 
   @@index([leaseId])
   @@index([propertyId])
+  @@index([interventionId])
+}
+
+// ─────────────────────────────────────────
+// INTERVENTIONS (travaux)
+// ─────────────────────────────────────────
+
+enum InterventionKind {
+  PLUMBING // plomberie
+  ELECTRICITY // électricité
+  HEATING // chauffage
+  PAINTING // peinture
+  CARPENTRY // menuiserie
+  LOCKSMITH // serrurerie
+  CLEANING // nettoyage
+  RENOVATION // remise en état
+  DAMAGE // sinistre
+  GARDENING // jardinage
+  OTHER
+}
+
+enum InterventionStatus {
+  PLANNED
+  DONE
+}
+
+enum InterventionDoneBy {
+  OWNER // le propriétaire lui-même (seuls les matériaux comptent aux impôts)
+  PROFESSIONAL
+}
+
+enum InterventionPayer {
+  OWNER
+  TENANT
+  INSURANCE
+}
+
+// Nature fiscale : elle décide du traitement aux impôts (déductible en location nue, charge ou immobilisation en LMNP réel)
+enum InterventionNature {
+  MAINTENANCE // entretien et réparation
+  IMPROVEMENT // amélioration
+  CONSTRUCTION // construction, reconstruction, agrandissement
+}
+
+// Travaux sur un bien (facultativement pendant un bail) ; factures et devis dans Document (interventionId)
+model Intervention {
+  id           String             @id @default(cuid())
+  property     Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyId   String
+  lease        Lease?             @relation(fields: [leaseId], references: [id], onDelete: SetNull)
+  leaseId      String?
+  title        String
+  kind         InterventionKind
+  date         DateTime
+  status       InterventionStatus @default(DONE)
+  doneBy       InterventionDoneBy @default(PROFESSIONAL)
+  providerName String?
+  // Coût TTC ; travaux faits soi-même : coût des matériaux seulement
+  cost         Float
+  paidBy       InterventionPayer  @default(OWNER)
+  fiscalNature InterventionNature @default(MAINTENANCE)
+  notes        String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  documents Document[]
+
+  @@index([propertyId, date])
+  @@index([leaseId])
 }
 
 // ─────────────────────────────────────────

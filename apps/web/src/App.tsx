@@ -16,8 +16,10 @@ import { Payments } from './pages/Payments'
 import { Bank } from './pages/Bank'
 import { Documents } from './pages/Documents'
 import { Charges } from './pages/Charges'
+import { Interventions } from './pages/Interventions'
 import { Owners } from './pages/Owners'
 import { Indices } from './pages/Indices'
+import { TaxRules } from './pages/TaxRules'
 import { Notifications } from './pages/Notifications'
 import { Settings } from './pages/Settings'
 
@@ -58,7 +60,9 @@ export default function App() {
                 <Route path="/bank" element={<Bank />} />
                 <Route path="/documents" element={<Documents />} />
                 <Route path="/charges" element={<Charges />} />
+                <Route path="/interventions" element={<Interventions />} />
                 <Route path="/indices" element={<Indices />} />
+                <Route path="/tax-rules" element={<TaxRules />} />
                 <Route path="/notifications" element={<Notifications />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>

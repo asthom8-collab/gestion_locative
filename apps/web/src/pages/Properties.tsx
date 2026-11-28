@@ -11,7 +11,7 @@ import { Field, inputCls } from '../components/ui/Field'
 import { Empty } from '../components/ui/Empty'
 import { ErrorAlert } from '../components/ui/ErrorAlert'
 import { PropTypeIcon } from '../components/ui/PropTypeIcon'
-import { Building2, Plus, Pencil, Trash2, MapPin, Check, ChevronRight, ClipboardList, UserCircle2, Paperclip } from '../components/icons'
+import { Building2, Plus, Pencil, Trash2, MapPin, Check, ChevronRight, ClipboardList, UserCircle2, Paperclip, Wrench } from '../components/icons'
 import { eur, fmtMonth, fullName, PROPERTY_TYPE_LABELS, FISCAL_REGIMES } from '../lib/format'
 import type { CreatePropertyInput, Lease, Property, PropertyType, FiscalRegime } from '../types'
 
@@ -139,6 +139,9 @@ export function Properties() {
                     )}
                     <Link to={`/documents?property=${p.id}`} className="text-xs text-slate-400 hover:text-indigo-600 mt-0.5 flex items-center gap-1 w-fit">
                       <Paperclip size={11} className="shrink-0" />Documents
+                    </Link>
+                    <Link to={`/interventions?property=${p.id}`} className="text-xs text-slate-400 hover:text-indigo-600 mt-0.5 flex items-center gap-1 w-fit">
+                      <Wrench size={11} className="shrink-0" />Interventions
                     </Link>
                   </div>
                   <div className="flex gap-1 shrink-0">

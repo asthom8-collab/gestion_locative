@@ -11,11 +11,13 @@ export const DOCUMENT_CATEGORIES: Record<DocumentCategory, string> = {
   TITLE_DEED: 'Titre de propriété',
   PROPERTY_TAX: 'Taxe foncière',
   INVOICE: 'Facture (travaux, entretien)',
+  QUOTE: 'Devis',
   OTHER: 'Autre',
 }
 
 /** Types proposés en premier selon le rattachement (tous restent possibles). */
 export const LEASE_CATEGORIES: DocumentCategory[] = ['LEASE_CONTRACT', 'INVENTORY_ENTRY', 'INVENTORY_EXIT', 'INSURANCE', 'PHOTO', 'OTHER']
+export const INTERVENTION_CATEGORIES: DocumentCategory[] = ['INVOICE', 'QUOTE', 'PHOTO', 'OTHER']
 export const PROPERTY_CATEGORIES: DocumentCategory[] = ['DIAGNOSTIC', 'TITLE_DEED', 'PROPERTY_TAX', 'INVOICE', 'PHOTO', 'OTHER']
 
 /** Types acceptés par l'API (champ accept du sélecteur de fichier). */
@@ -27,6 +29,7 @@ export const fmtSize = (bytes: number) =>
 
 /** « Bail de Jean Dupont · T3 Lyon » ou « Bien : T3 Lyon ». */
 export function attachmentLabel(d: DocumentItem) {
+  if (d.intervention) return `Intervention : ${d.intervention.title} · ${d.property?.name ?? '—'}`
   if (d.lease) return `Bail de ${fullName(d.lease.tenant)} · ${d.lease.property.name}`
   return `Bien : ${d.property?.name ?? '—'}`
 }

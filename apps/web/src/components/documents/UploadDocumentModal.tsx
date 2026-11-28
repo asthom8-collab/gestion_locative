@@ -6,13 +6,13 @@ import { Field, inputCls } from '../ui/Field'
 import { Upload } from '../icons'
 import { useUploadDocument } from '../../hooks/useDocuments'
 import { useActionError } from '../../hooks/useActionError'
-import { ACCEPTED_FILES, DOCUMENT_CATEGORIES, LEASE_CATEGORIES, MAX_DOCUMENT_BYTES, PROPERTY_CATEGORIES, fmtSize } from '../../lib/documents'
+import { ACCEPTED_FILES, DOCUMENT_CATEGORIES, INTERVENTION_CATEGORIES, LEASE_CATEGORIES, MAX_DOCUMENT_BYTES, PROPERTY_CATEGORIES, fmtSize } from '../../lib/documents'
 import { CategoryPicker } from './CategoryPicker'
 import type { DocumentCategory, DocumentTarget } from '../../types'
 
 /** Les types utiles au rattachement d'abord, puis les autres. */
 function categoryOrder(target: DocumentTarget): DocumentCategory[] {
-  const first = 'propertyId' in target ? PROPERTY_CATEGORIES : LEASE_CATEGORIES
+  const first = 'interventionId' in target ? INTERVENTION_CATEGORIES : 'propertyId' in target ? PROPERTY_CATEGORIES : LEASE_CATEGORIES
   return [...first, ...(Object.keys(DOCUMENT_CATEGORIES) as DocumentCategory[]).filter(c => !first.includes(c))]
 }
 
